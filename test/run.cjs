@@ -707,6 +707,16 @@ test('summary: native settings select and order optional recorded metrics', () =
   deepEqual(elementsWithClass(summary.props.children[0].props.children, '__ch4acko3-dsh-turn-fold__separator').length, 3)
 })
 
+test('summary: partial token totals gain their lower-bound marker only after the turn settles', () => {
+  const { api } = buildSandbox()
+  api.setSummaryFields(['inputTokens', 'outputTokens'])
+  const metrics = { inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true }
+  const running = api.summary({ metrics, running: true, t: () => '0s' })
+  const settled = api.summary({ metrics, running: false, t: () => '0s' })
+  deepEqual(elementText(running.props.children[0].props.children), '3.4K input tokens1.4K output tokens')
+  deepEqual(elementText(settled.props.children[0].props.children), '≥ 3.4K input tokens≥ 1.4K output tokens')
+})
+
 test('summary: count metrics remount only their numeric value when the count changes', () => {
   const { api } = buildSandbox()
   api.setSummaryFields(['toolCalls'])
