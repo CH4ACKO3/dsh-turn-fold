@@ -419,7 +419,7 @@ function __ch4acko3DshTurnFoldDurationPart(field, key, duration) {
   part.segments = duration.split(/(\d+)/).filter(function (segment) { return segment.length > 0; });
   return part;
 }
-function __ch4acko3DshTurnFoldSummaryParts(metrics, running, completed, durationT) {
+function __ch4acko3DshTurnFoldSummaryParts(metrics, running, settled, completed, durationT) {
   var fields = react.useSyncExternalStore(__ch4acko3DshTurnFoldSubscribeSettings, __ch4acko3DshTurnFoldGetSettingsSnapshot, __ch4acko3DshTurnFoldGetSettingsSnapshot);
   var durationMs = __ch4acko3DshTurnFoldLiveDuration(metrics, running);
   var parts = [];
@@ -438,7 +438,7 @@ function __ch4acko3DshTurnFoldSummaryParts(metrics, running, completed, duration
     } else if (field === "tokensPerSecond") {
       if (typeof value === "number") parts.push({ field: field, text: __ch4acko3DshTurnFoldText("summary.tokensPerSecond", { count: value >= 10 ? Math.round(value) : Math.round(value * 10) / 10 }) });
     } else if (typeof value === "number") {
-      parts.push(__ch4acko3DshTurnFoldCountPart(field, "summary." + field, value, formatTokens(value), metrics.tokenUsagePartial && !running ? "≥ " : ""));
+      parts.push(__ch4acko3DshTurnFoldCountPart(field, "summary." + field, value, formatTokens(value), metrics.tokenUsagePartial && settled ? "≥ " : ""));
     }
   }
   return parts.length === 0 ? [{ field: "activity", text: __ch4acko3DshTurnFoldText("summary.activity") }] : parts;
@@ -475,7 +475,7 @@ function __ch4acko3DshTurnFoldSummaryChildren(parts, disclosure, statusSuffix) {
   return children;
 }
 function __ch4acko3DshTurnFoldSummary(props) {
-  var parts = __ch4acko3DshTurnFoldSummaryParts(props.metrics, props.running, props.completed, props.t);
+  var parts = __ch4acko3DshTurnFoldSummaryParts(props.metrics, props.running, props.settled, props.completed, props.t);
   var statusSuffix = __ch4acko3DshTurnFoldStatusSuffix(props.termination);
   var label = __ch4acko3DshTurnFoldSummaryLabel(parts) + statusSuffix;
   return react_jsx_runtime.jsxs("div", {
@@ -611,7 +611,7 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
     };
   }, []);
-  var parts = __ch4acko3DshTurnFoldSummaryParts(props.metrics, false, props.completed, props.t);
+  var parts = __ch4acko3DshTurnFoldSummaryParts(props.metrics, false, true, props.completed, props.t);
   var statusSuffix = __ch4acko3DshTurnFoldStatusSuffix(props.termination);
   var label = __ch4acko3DshTurnFoldSummaryLabel(parts) + statusSuffix;
   var actionLabel = __ch4acko3DshTurnFoldText(expanded ? "action.collapse" : "action.expand", { summary: label });
@@ -853,6 +853,7 @@ function __ch4acko3DshTurnFoldRender(props) {
         metrics: __ch4acko3DshTurnFoldPlanMetrics(plan, nodeStore, timeline),
         termination: plan.endReason === "aborted" || plan.endReason === "interrupted" ? plan.endReason : void 0,
         running: plan.status !== "closed" && playbackTime === null,
+        settled: plan.status === "closed",
         t: props.t
       }, "ch4acko3-dsh-turn-fold-summary-" + String(sessionId) + "-" + plan.turn) });
     }

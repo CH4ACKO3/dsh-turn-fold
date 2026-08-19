@@ -516,6 +516,7 @@ test('summary: historical playback uses the projected clock without starting a l
 
   deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat'])
   deepEqual(result[1].props.running, false)
+  deepEqual(result[1].props.settled, false)
   deepEqual(result[1].props.metrics.startTime, 1000)
   deepEqual(result[1].props.metrics.durationMs, 4000)
   deepEqual(elementText(api.summary(result[1].props).props.children[0].props.children), 'Worked for 4s0 tool calls800 input tokens120 output tokens')
@@ -704,6 +705,7 @@ test('summary: native locale translation distinguishes completed, stopped, and i
     metrics: { durationMs: 84000, toolCalls: 2, inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true },
     completed: true,
     running: false,
+    settled: true,
     t: () => '1分24秒',
   })
   deepEqual(elementText(completed.props.children[0].props.children), '耗时 1 分 24 秒2 次工具调用≥ 3.4K 输入 tokens≥ 1.4K 输出 tokens')
@@ -712,6 +714,7 @@ test('summary: native locale translation distinguishes completed, stopped, and i
       metrics: { durationMs: 84000, toolCalls: 2, inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true },
       termination,
       running: false,
+      settled: true,
       t: () => '1分24秒',
     })
     deepEqual(elementText(summary.props.children[0].props.children), `已工作 1 分 24 秒2 次工具调用≥ 3.4K 输入 tokens≥ 1.4K 输出 tokens - ${suffix}`)
@@ -734,9 +737,11 @@ test('summary: partial token totals gain their lower-bound marker only after the
   const { api } = buildSandbox()
   api.setSummaryFields(['inputTokens', 'outputTokens'])
   const metrics = { inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true }
-  const running = api.summary({ metrics, running: true, t: () => '0s' })
-  const settled = api.summary({ metrics, running: false, t: () => '0s' })
+  const running = api.summary({ metrics, running: true, settled: false, t: () => '0s' })
+  const replaying = api.summary({ metrics, running: false, settled: false, t: () => '0s' })
+  const settled = api.summary({ metrics, running: false, settled: true, t: () => '0s' })
   deepEqual(elementText(running.props.children[0].props.children), '3.4K input tokens1.4K output tokens')
+  deepEqual(elementText(replaying.props.children[0].props.children), '3.4K input tokens1.4K output tokens')
   deepEqual(elementText(settled.props.children[0].props.children), '≥ 3.4K input tokens≥ 1.4K output tokens')
 })
 
