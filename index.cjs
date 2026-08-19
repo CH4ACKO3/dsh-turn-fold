@@ -1,6 +1,13 @@
-// Host entry for the dsh-turn-fold Harmony provider.
-// The actual behavior lives in ./patch.cjs, which Harmony discovers through
-// `dsh.harmony.patches` in package.json. This entry only needs to be a valid
-// Cordis plugin so the provider participates in the loader tree.
+'use strict'
+
+// Host entry for the @ch4acko3/dsh-turn-fold Harmony provider.
+const { settingsNamespace } = require('@deepseek-ai/dsh-settings')
+const { Config, SETTINGS_NAMESPACE } = require('./settings.cjs')
+
+exports.Config = Config
 exports.inject = ['harmony']
-exports.apply = () => {}
+exports.apply = (ctx, config) => {
+  ctx.inject(['settings'], (settingsCtx) => {
+    settingsCtx.settings.register(settingsNamespace(SETTINGS_NAMESPACE), Config, { base: config })
+  })
+}

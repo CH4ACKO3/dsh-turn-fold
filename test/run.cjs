@@ -5,13 +5,20 @@ const path = require('node:path')
 const assert = require('node:assert')
 const ts = require('typescript')
 const { tsquery } = require('@phenomnomnominal/tsquery')
+const React = require('react')
+const reactJsxRuntime = require('react/jsx-runtime')
+const TestRenderer = require('react-test-renderer')
 
 const ROOT = path.join(__dirname, '..')
 const INLINE = require(path.join(ROOT, 'inline-source.cjs'))
 const PATCHES = require(path.join(ROOT, 'patch.cjs'))
+const LOCALES = require(path.join(ROOT, 'locales.cjs'))
+const { DEFAULT_SUMMARY_FIELDS, SUMMARY_FIELDS } = require(path.join(ROOT, 'settings.cjs'))
 const TARGET_PACKAGE = require.resolve('@deepseek-ai/dsh-client-ui-conversation/package.json', { paths: [ROOT] })
 const TARGET_ROOT = path.dirname(TARGET_PACKAGE)
 const TARGET_PATH = path.join(TARGET_ROOT, 'lib/client.js')
+const MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+const LOCKFILE = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'))
 
 let passed = 0
 let failed = 0
@@ -69,6 +76,69 @@ test('target: package version stays pinned to the published DSH target', () => {
   deepEqual(PATCHES[1].target.version, PATCHES[0].target.version)
 })
 
+test('provider: scoped package name matches the DSH bundle registration', () => {
+  deepEqual(MANIFEST.name, '@ch4acko3/dsh-turn-fold')
+  deepEqual(MANIFEST.publishConfig, { access: 'public' })
+  deepEqual(LOCKFILE.name, MANIFEST.name)
+  deepEqual(LOCKFILE.packages[''].name, MANIFEST.name)
+  const bundlePatch = fs.readFileSync(path.join(ROOT, 'harmony.patch.yml'), 'utf8')
+  assert.match(bundlePatch, /id: ch4acko3-dsh-turn-fold/)
+  assert.match(bundlePatch, /name: '@ch4acko3\/dsh-turn-fold'/)
+})
+
+test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
+  deepEqual(MANIFEST.version, '0.3.0')
+  deepEqual(MANIFEST.dependencies['@deepseek-ai/dsh-settings'], '0.1.0-rc.8')
+  deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
+  deepEqual(require(path.join(ROOT, 'index.cjs')).Config({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
+  deepEqual(SUMMARY_FIELDS, [
+    'duration',
+    'toolCalls',
+    'modelCalls',
+    'inputTokens',
+    'outputTokens',
+    'cacheReadTokens',
+    'cacheWriteTokens',
+    'reasoningTokens',
+    'timeToFirstToken',
+    'tokensPerSecond',
+  ])
+})
+
+test('provider: host entry registers the dsh-turn-fold settings namespace', () => {
+  const provider = require(path.join(ROOT, 'index.cjs'))
+  const config = provider.Config({ summaryFields: ['duration', 'reasoningTokens'] })
+  let registration
+  provider.apply({
+    inject(services, start) {
+      deepEqual(services, ['settings'])
+      start({
+        settings: {
+          register(namespace, schema, options) {
+            registration = { namespace, schema, options }
+          },
+        },
+      })
+    },
+  }, config)
+  deepEqual(registration.namespace, 'dsh-turn-fold')
+  deepEqual(registration.schema, provider.Config)
+  deepEqual(registration.options, { base: config })
+})
+
+test('locale files: native zh and en dictionaries have the same non-empty key set', () => {
+  deepEqual(Object.keys(LOCALES.zh).sort(), Object.keys(LOCALES.en).sort())
+  assert.ok(Object.values(LOCALES.zh).every((value) => typeof value === 'string' && value.length > 0))
+  assert.ok(Object.values(LOCALES.en).every((value) => typeof value === 'string' && value.length > 0))
+})
+
+test('provider: every Source Patch has an exact selector contract', () => {
+  for (const patch of PATCHES) {
+    deepEqual(patch.expect, 1, `${patch.id}: expect must stay exact`)
+    assert.ok(patch.target.version, `${patch.id}: target version must stay pinned`)
+  }
+})
+
 const targetSource = fs.readFileSync(TARGET_PATH, 'utf8')
 let transformedSource = targetSource
 for (const patch of PATCHES) transformedSource = applyPatch(transformedSource, patch)
@@ -78,25 +148,125 @@ test('selectors: injected runtime does not re-match the render-loop selector', (
   deepEqual(nodes.length, 0)
 })
 
+test('runtime: internal code and DOM identifiers are scoped to the package owner', () => {
+  assert.doesNotMatch(INLINE, /__dshTurnFold|__dsh-turn-fold|data-turn-fold/)
+  assert.match(INLINE, /__ch4acko3DshTurnFold/)
+  assert.match(INLINE, /data-dsh-fold-owner/)
+  assert.match(INLINE, /@ch4acko3\/dsh-turn-fold/)
+})
+
 test('transform: final browser bundle parses without syntax errors', () => {
   const sf = sourceFile('client.patched.js', transformedSource)
   deepEqual(sf.parseDiagnostics.length, 0)
-  assert.match(transformedSource, /__dshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId,/)
+  assert.match(transformedSource, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId, renderNode:/)
+  assert.match(transformedSource, /const t = ctx\.locale\.bind\(NS\);\s+__ch4acko3DshTurnFoldInstall\(ctx\);/)
+})
+
+test('target: closing-reasoning extraction stays bound to the native semantic row contract', () => {
+  assert.match(targetSource, /function ReasoningRow\(/)
+  assert.match(targetSource, /"data-variant": "think"/)
+  assert.match(INLINE, /react_jsx_runtime\.jsx\(ReasoningRow,/)
+  assert.match(INLINE, /\[data-variant=think\]\{display:none\}/)
+})
+
+test('transform: preserves an earlier Patch extension inside the native node renderer', () => {
+  const original = '\t\t\t\t\t\t\t\tfileMentions,\n\t\t\t\t\t\t\t\trenderSlot,'
+  const extended = `${original.split('\n')[0]}\n\t\t\t\t\t\t\t\tthirdPartyCompatibilityMarker,\n\t\t\t\t\t\t\t\trenderSlot,`
+  assert.ok(targetSource.includes(original), 'published node renderer shape changed')
+  let composed = targetSource.replace(original, extended)
+  for (const patch of PATCHES) composed = applyPatch(composed, patch)
+  assert.match(composed, /renderNode: \(nodeKey\) =>/)
+  assert.match(composed, /thirdPartyCompatibilityMarker/)
 })
 
 // ---- Runtime sandbox ---------------------------------------------------------
 
-function formatDuration(ms) {
+function formatDuration(ms, t) {
   const total = Math.floor(ms / 1000)
   const minutes = Math.floor(total / 60)
   const seconds = total % 60
-  return minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`
+  return minutes > 0
+    ? t('duration.minutes', { minutes, seconds: String(seconds).padStart(2, '0') })
+    : t('duration.seconds', { seconds })
 }
 
 function compactTokens(value) {
   if (value >= 1e6) return `${Math.round(value / 1e5) / 10}M`
   if (value >= 1e3) return `${Math.round(value / 100) / 10}K`
   return String(value)
+}
+
+function buildRuntime(react, jsxRuntime) {
+  const ReasoningRow = ({ text }) => jsxRuntime.jsx('div', { 'data-test-reasoning': text, children: text })
+  const factory = new Function(
+    'react',
+    'react_jsx_runtime',
+    'ReasoningRow',
+    'formatRunDuration',
+    'formatTokens',
+    `${INLINE}\nreturn { render: __ch4acko3DshTurnFoldRender, disclosure: __ch4acko3DshTurnFoldDisclosure, summary: __ch4acko3DshTurnFoldSummary, chevron: __ch4acko3DshTurnFoldChevron, settingsCard: __ch4acko3DshTurnFoldSettingsCard, metrics: __ch4acko3DshTurnFoldPlanMetrics, usage: __ch4acko3DshTurnFoldUsage, interactionKeys: __ch4acko3DshTurnFoldInteractionKeys, install: __ch4acko3DshTurnFoldInstall };`,
+  )
+  const runtime = factory(react, jsxRuntime, ReasoningRow, formatDuration, compactTokens)
+  let locale = 'en'
+  let registered
+  let settings = { summaryFields: DEFAULT_SUMMARY_FIELDS }
+  let settingsDecoder
+  let settingsSnapshot
+  const settingsListeners = new Set()
+  const registeredSlots = []
+  runtime.install({
+    effect(start) {
+      return start()
+    },
+    locale: {
+      register(_namespace, dictionaries) {
+        registered = dictionaries
+        return () => {}
+      },
+      bind() {
+        return (key, params = {}) => registered[locale][key].replace(/\{([^}]+)\}/g, (_match, name) => String(params[name]))
+      },
+    },
+    settingsScope: {
+      bind({ decode }) {
+        settingsDecoder = decode
+        settingsSnapshot = { status: 'ready', value: decode(settings), writable: true }
+        return {
+          getSnapshot: () => settingsSnapshot,
+          subscribe(listener) {
+            settingsListeners.add(listener)
+            return () => settingsListeners.delete(listener)
+          },
+          set(field, value) {
+            settings = { ...settings, [field]: value }
+            settingsSnapshot = { ...settingsSnapshot, value: decode(settings) }
+            for (const listener of settingsListeners) listener()
+            return { then(resolve) { resolve() } }
+          },
+        }
+      },
+    },
+    slots: {
+      inject(name, start) {
+        deepEqual(name, 'settings.plugin.item')
+        start()
+      },
+      register(options, component) {
+        registeredSlots.push({ options, component })
+        return () => {}
+      },
+    },
+  })
+  runtime.setLocale = (next) => {
+    locale = next
+  }
+  runtime.setSummaryFields = (summaryFields) => {
+    settings = { summaryFields }
+    settingsSnapshot = { ...settingsSnapshot, value: settingsDecoder(settings) }
+    for (const listener of settingsListeners) listener()
+  }
+  runtime.registeredSlots = registeredSlots
+  return runtime
 }
 
 function buildSandbox() {
@@ -111,17 +281,25 @@ function buildSandbox() {
       return { current: initial }
     },
     useEffect() {},
+    useSyncExternalStore(_subscribe, getSnapshot) {
+      return getSnapshot()
+    },
   }
-  const factory = new Function(
-    'react',
-    'react_jsx_runtime',
-    'ChatNodeSeat',
-    'formatRunDuration',
-    'formatTokens',
-    `${INLINE}\nreturn { render: __dshTurnFoldRender, disclosure: __dshTurnFoldDisclosure, seat: __dshTurnFoldSeat, metrics: __dshTurnFoldPlanMetrics, outputTokens: __dshTurnFoldOutputTokens };`,
-  )
-  const api = factory(react, { jsx, jsxs }, ChatNodeSeat, formatDuration, compactTokens)
-  return { api, ChatNodeSeat }
+  const runtime = buildRuntime(react, { jsx, jsxs })
+  const renderCalls = []
+  const renderNode = (key) => {
+    renderCalls.push(key)
+    return jsx(ChatNodeSeat, { nodeKey: key, compatibilityMarker: true }, key)
+  }
+  const api = {
+    ...runtime,
+    render: (props) => runtime.render({
+      ...props,
+      renderNode,
+      t: (key, params) => key === 'duration.seconds' ? `${params.seconds}s` : `${params.minutes}m ${params.seconds}s`,
+    }),
+  }
+  return { api, ChatNodeSeat, renderNode, renderCalls }
 }
 
 function turnLocation(turn, status, startTime, endTime, reason = 'completed') {
@@ -148,47 +326,263 @@ function timelineFrom(turns) {
 function classify(out, api, ChatNodeSeat) {
   return out.map((element) => {
     if (element.type === api.disclosure) return { kind: 'disclosure', key: element.key, props: element.props }
+    if (element.type === api.summary) return { kind: 'summary', key: element.key, props: element.props }
     if (element.type === ChatNodeSeat) return { kind: 'seat', nodeKey: element.props.nodeKey }
+    if (element.props?.className === '__ch4acko3-dsh-turn-fold__closing') return { kind: 'closing', child: element.props.children }
     return { kind: 'other', type: element.type }
   })
+}
+
+function elementText(value) {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (Array.isArray(value)) return value.map(elementText).join('')
+  if (value && typeof value === 'object') return elementText(value.props?.children)
+  return ''
+}
+
+function elementsWithClass(value, className, out = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) elementsWithClass(item, className, out)
+  } else if (value && typeof value === 'object') {
+    if (value.props?.className === className) out.push(value)
+    elementsWithClass(value.props?.children, className, out)
+  }
+  return out
 }
 
 function completedFixture(options = {}) {
   const turn = turnLocation(1, 'closed', options.startTime ?? 1000, options.endTime ?? 85000)
   const nodes = [
     { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
-    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { finalNode: { seq: 10 }, usage: { outputTokens: 500 } } },
+    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 1, finalNode: { seq: 10 }, usage: { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 200 } } },
     { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
     { key: 'steering', kind: 'steering', location: { kind: 'step', turn }, data: { content: 'continue' } },
     { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
-    { key: 'answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { finalNode: { seq: 20 }, usage: { outputTokens: 900 } } },
+    { key: 'answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 2, finalNode: { seq: 20 }, usage: { inputTokens: 2000, outputTokens: 900, cacheReadTokens: 100, cacheWriteTokens: 50, reasoningTokens: 300 } } },
     { key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { turn: 1, closing: { finalNode: { seq: 20 } }, branchUnavailable: options.branchUnavailable === true } },
   ]
   return { turn, nodes, order: nodes.map((node) => node.key) }
 }
 
 test('fold: one disclosure collects activity split by a steering node', () => {
-  const { api, ChatNodeSeat } = buildSandbox()
+  const { api, ChatNodeSeat, renderNode } = buildSandbox()
   const fixture = completedFixture()
   const out = api.render({
     order: fixture.order,
     nodeStore: nodeStoreFrom(fixture.nodes),
     timeline: timelineFrom([fixture.turn]),
     sessionId: 'session-a',
-    seat: {},
   })
   const result = classify(out, api, ChatNodeSeat)
   deepEqual(result.map((item) => item.kind), ['seat', 'seat', 'disclosure', 'seat', 'seat'])
   deepEqual(result.map((item) => item.nodeKey).filter(Boolean), ['user', 'steering', 'answer', 'tail'])
   deepEqual(result[2].props.activity, ['think', 'tool-1', 'tool-2'])
-  deepEqual(result[2].props.durationMs, 84000)
-  deepEqual(result[2].props.toolCount, 2)
-  deepEqual(result[2].props.tokenCount, 1400)
+  deepEqual(result[2].props.metrics.durationMs, 84000)
+  deepEqual(result[2].props.metrics.toolCalls, 2)
+  deepEqual(result[2].props.metrics.modelCalls, 2)
+  deepEqual(result[2].props.metrics.inputTokens, 3350)
+  deepEqual(result[2].props.metrics.outputTokens, 1400)
+  deepEqual(result[2].props.metrics.cacheReadTokens, 300)
+  deepEqual(result[2].props.metrics.cacheWriteTokens, 50)
+  deepEqual(result[2].props.metrics.reasoningTokens, 300)
   deepEqual(result[2].props.foldKey, 'session-a:1')
-  deepEqual(result[2].key, 'dsh-turn-fold-session-a-1')
+  deepEqual(result[2].props.renderNode, renderNode)
+  deepEqual(result[2].key, 'ch4acko3-dsh-turn-fold-session-a-1')
 })
 
-test('fold: activity after the closing answer disables folding', () => {
+test('fold: reasoning in the closing assistant node moves into the disclosure without duplicating the final answer', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(2, 'closed', 1000, 5000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    {
+      key: 'answer',
+      kind: 'assistant-step',
+      location: { kind: 'step', turn },
+      data: {
+        step: 1,
+        blocks: [
+          { kind: 'reasoning', text: 'closing thought' },
+          { kind: 'text', text: 'visible answer' },
+        ],
+        finalNode: { seq: 20 },
+        usage: { inputTokens: 100, outputTokens: 50 },
+      },
+    },
+    { key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { closing: { finalNode: { seq: 20 } } } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-closing-reasoning',
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'disclosure', 'closing', 'seat'])
+  deepEqual(result[1].props.activity, [])
+  deepEqual(result[1].props.closingReasoning, ['closing thought'])
+  deepEqual(result[2].child.type, ChatNodeSeat)
+  deepEqual(result[2].child.props.nodeKey, 'answer')
+})
+
+test('summary: a running turn shows a top bar before activity without hiding streamed nodes', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const startTime = Date.now() - 4200
+  const turn = turnLocation(3, 'open', startTime)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'running-answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 1, usage: { inputTokens: 800, outputTokens: 120 } } },
+    { key: 'running-tool', kind: 'tool-call', location: { kind: 'step', turn }, data: {} },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-running',
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat', 'seat'])
+  deepEqual(result[1].props.running, true)
+  deepEqual(result[1].props.metrics.startTime, startTime)
+  deepEqual(result[1].props.metrics.durationMs, null)
+  deepEqual(result[1].props.metrics.toolCalls, 1)
+  deepEqual(result[1].props.metrics.inputTokens, 800)
+  deepEqual(result[1].props.metrics.outputTokens, 120)
+
+  const summary = api.summary(result[1].props)
+  const header = summary.props.children[0]
+  deepEqual(header.props['aria-label'], 'Worked for 4s | 1 tool call | 800 input tokens | 120 output tokens')
+  deepEqual(elementText(header.props.children), 'Worked for 4s1 tool call800 input tokens120 output tokens')
+  deepEqual(elementsWithClass(header.props.children, '__ch4acko3-dsh-turn-fold__separator').length, 3)
+  deepEqual(elementsWithClass(header.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['1', '800', '120'])
+  deepEqual(header.props.role, 'status')
+  deepEqual(summary.props.children[1].props.className, '__ch4acko3-dsh-turn-fold__rule')
+})
+
+test('summary: native locale translation distinguishes completed, stopped, and interrupted turns in Chinese', () => {
+  const { api } = buildSandbox()
+  const completedEnglish = api.summary({
+    metrics: { durationMs: 84000 },
+    completed: true,
+    running: false,
+    t: () => '1m 24s',
+  })
+  deepEqual(elementText(completedEnglish.props.children[0].props.children), 'Took 1m 24s')
+  api.setLocale('zh')
+  const completed = api.summary({
+    metrics: { durationMs: 84000, toolCalls: 2, inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true },
+    completed: true,
+    running: false,
+    t: () => '1分24秒',
+  })
+  deepEqual(elementText(completed.props.children[0].props.children), '耗时 1 分 24 秒2 次工具调用≥ 3.4K 输入 tokens≥ 1.4K 输出 tokens')
+  for (const [termination, suffix] of [['aborted', '已停止'], ['interrupted', '已中断']]) {
+    const summary = api.summary({
+      metrics: { durationMs: 84000, toolCalls: 2, inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true },
+      termination,
+      running: false,
+      t: () => '1分24秒',
+    })
+    deepEqual(elementText(summary.props.children[0].props.children), `已工作 1 分 24 秒2 次工具调用≥ 3.4K 输入 tokens≥ 1.4K 输出 tokens - ${suffix}`)
+  }
+})
+
+test('summary: native settings select and order optional recorded metrics', () => {
+  const { api } = buildSandbox()
+  api.setSummaryFields(['reasoningTokens', 'cacheReadTokens', 'modelCalls', 'tokensPerSecond'])
+  const summary = api.summary({
+    metrics: { durationMs: 84000, modelCalls: 2, cacheReadTokens: 300, reasoningTokens: 180, tokensPerSecond: 23.6 },
+    running: false,
+    t: () => '1m 24s',
+  })
+  deepEqual(elementText(summary.props.children[0].props.children), '180 reasoning tokens300 cache-read tokens2 model calls24 tokens/s')
+  deepEqual(elementsWithClass(summary.props.children[0].props.children, '__ch4acko3-dsh-turn-fold__separator').length, 3)
+})
+
+test('summary: count metrics remount only their numeric value when the count changes', () => {
+  const { api } = buildSandbox()
+  api.setSummaryFields(['toolCalls'])
+  const first = api.summary({ metrics: { toolCalls: 1 }, running: true, t: () => '0s' })
+  const second = api.summary({ metrics: { toolCalls: 2 }, running: true, t: () => '0s' })
+  const firstValue = elementsWithClass(first, '__ch4acko3-dsh-turn-fold__metricValue')[0]
+  const secondValue = elementsWithClass(second, '__ch4acko3-dsh-turn-fold__metricValue')[0]
+  deepEqual(firstValue.key, 'toolCalls-1')
+  deepEqual(secondValue.key, 'toolCalls-2')
+  deepEqual(firstValue.props.children, '1')
+  deepEqual(secondValue.props.children, '2')
+})
+
+test('settings: browser runtime contributes a native plugin-settings card for its namespace', () => {
+  const { api } = buildSandbox()
+  deepEqual(api.registeredSlots.length, 1)
+  deepEqual(api.registeredSlots[0].options, { name: 'settings.plugin.item', key: 'dsh-turn-fold' })
+  deepEqual(api.registeredSlots[0].component, api.settingsCard)
+})
+
+test('settings: native card exposes all metrics and persists checkbox changes', () => {
+  const api = buildRuntime(React, reactJsxRuntime)
+  let rendered
+  TestRenderer.act(() => {
+    rendered = TestRenderer.create(React.createElement(api.settingsCard))
+  })
+  let button = rendered.root.findByType('button')
+  deepEqual(button.props['aria-expanded'], false)
+
+  TestRenderer.act(() => button.props.onClick())
+  let checkboxes = rendered.root.findAllByType('input')
+  deepEqual(checkboxes.length, SUMMARY_FIELDS.length)
+  deepEqual(checkboxes.filter((checkbox) => checkbox.props.checked).length, DEFAULT_SUMMARY_FIELDS.length)
+
+  const reasoning = rendered.root.findAllByType('label').find((label) => label.findByType('span').children.join('') === 'Reasoning tokens')
+  TestRenderer.act(() => reasoning.findByType('input').props.onChange({ currentTarget: { checked: true } }))
+  checkboxes = rendered.root.findAllByType('input')
+  deepEqual(checkboxes.find((checkbox) => checkbox.parent.findByType('span').children.join('') === 'Reasoning tokens').props.checked, true)
+
+  TestRenderer.act(() => rendered.unmount())
+})
+
+test('metrics: records native usage and timing fields even when they are not displayed', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  fixture.nodes.find((node) => node.key === 'think').data.finalNode.timing = {
+    stepStartTime: 1100,
+    firstTokenTime: 1500,
+    completedTime: 11500,
+  }
+  fixture.nodes.find((node) => node.key === 'answer').data.finalNode.timing = {
+    stepStartTime: 12000,
+    firstTokenTime: 13000,
+    completedTime: 22000,
+  }
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-metrics',
+  }), api, ChatNodeSeat)
+  const metrics = result.find((item) => item.kind === 'disclosure').props.metrics
+  deepEqual(metrics.timeToFirstToken, 400)
+  deepEqual(metrics.tokensPerSecond, 1400 / 19)
+})
+
+test('rendering: the original node renderer handles every visible and expanded node exactly once', () => {
+  const { api, renderCalls } = buildSandbox()
+  const fixture = completedFixture()
+  const out = api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-renderer',
+  })
+  deepEqual(renderCalls, ['user', 'steering', 'answer', 'tail'])
+
+  const disclosureElement = out.find((element) => element.type === api.disclosure)
+  const closed = api.disclosure(disclosureElement.props)
+  closed.props.children[0].props.onClick()
+  const opened = api.disclosure(disclosureElement.props)
+  deepEqual(renderCalls, ['user', 'steering', 'answer', 'tail', 'think', 'tool-1', 'tool-2'])
+  opened.props.children[0].props.onClick()
+})
+
+test('fold: branch-unavailable turn remains fully visible', () => {
   const { api, ChatNodeSeat } = buildSandbox()
   const fixture = completedFixture({ branchUnavailable: true })
   const result = classify(api.render({
@@ -196,10 +590,56 @@ test('fold: activity after the closing answer disables folding', () => {
     nodeStore: nodeStoreFrom(fixture.nodes),
     timeline: timelineFrom([fixture.turn]),
     sessionId: 'session-a',
-    seat: {},
   }), api, ChatNodeSeat)
-  deepEqual(result.every((item) => item.kind === 'seat'), true)
-  deepEqual(result.map((item) => item.nodeKey), fixture.order)
+  deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+})
+
+test('fold: known activity after the closing answer disables folding', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  const tailIndex = fixture.order.indexOf('tail')
+  const after = { key: 'tool-after-answer', kind: 'tool-call', location: { kind: 'step', turn: fixture.turn }, data: { root: {} } }
+  fixture.nodes.splice(tailIndex, 0, after)
+  fixture.order.splice(tailIndex, 0, after.key)
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-a',
+  }), api, ChatNodeSeat)
+  deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+})
+
+test('summary: activity appended after the closing answer keeps the bar at the turn start', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(6, 'closed', 1000, 5000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    {
+      key: 'answer',
+      kind: 'assistant-step',
+      location: { kind: 'step', turn },
+      data: {
+        step: 1,
+        blocks: [{ kind: 'text', text: 'starting background work' }],
+        finalNode: { seq: 20 },
+        usage: { inputTokens: 100, outputTokens: 50 },
+      },
+    },
+    { key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { closing: { finalNode: { seq: 20 } } } },
+    { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+    { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-background-tools',
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat', 'seat', 'seat', 'seat'])
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'answer', 'tail', 'tool-1', 'tool-2'])
 })
 
 test('fold: an unknown node after the closing answer also disables folding', () => {
@@ -214,10 +654,58 @@ test('fold: an unknown node after the closing answer also disables folding', () 
     nodeStore: nodeStoreFrom(fixture.nodes),
     timeline: timelineFrom([fixture.turn]),
     sessionId: 'session-a',
-    seat: {},
   }), api, ChatNodeSeat)
-  deepEqual(result.every((item) => item.kind === 'seat'), true)
-  deepEqual(result.map((item) => item.nodeKey), fixture.order)
+  deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+})
+
+test('fold: a closing-less completed turn remains fully visible', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  fixture.nodes.find((node) => node.key === 'tail').data.closing = null
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-a',
+  }), api, ChatNodeSeat)
+  deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+})
+
+test('fold: a max-token turn remains fully visible', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  const tailIndex = fixture.order.indexOf('tail')
+  const maxTokens = { key: 'max-tokens', kind: 'turn-max-tokens', location: { kind: 'turn', turn: fixture.turn }, data: {} }
+  fixture.nodes.splice(tailIndex, 0, maxTokens)
+  fixture.order.splice(tailIndex, 0, maxTokens.key)
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-a',
+  }), api, ChatNodeSeat)
+  deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+})
+
+test('fold: every declared Agent activity kind joins the disclosure', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  const answerIndex = fixture.order.indexOf('answer')
+  const kinds = ['context', 'command', 'manual-compaction', 'compaction', 'model-retry']
+  const extra = kinds.map((kind) => ({ key: `activity-${kind}`, kind, location: { kind: 'step', turn: fixture.turn }, data: {} }))
+  fixture.nodes.splice(answerIndex, 0, ...extra)
+  fixture.order.splice(answerIndex, 0, ...extra.map((node) => node.key))
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-a',
+  }), api, ChatNodeSeat)
+  const disclosure = result.find((item) => item.kind === 'disclosure')
+  deepEqual(disclosure.props.activity, ['think', 'tool-1', 'tool-2', ...extra.map((node) => node.key)])
 })
 
 test('fold: incomplete timeline suppresses metrics instead of showing partial counts', () => {
@@ -232,15 +720,14 @@ test('fold: incomplete timeline suppresses metrics instead of showing partial co
     nodeStore: nodeStoreFrom(fixture.nodes),
     timeline: timelineFrom([incomplete]),
     sessionId: 'session-a',
-    seat: {},
   }), api, ChatNodeSeat)
   const disclosure = result.find((item) => item.kind === 'disclosure')
-  deepEqual(disclosure.props.durationMs, null)
-  deepEqual(disclosure.props.toolCount, null)
-  deepEqual(disclosure.props.tokenCount, null)
+  deepEqual(disclosure.props.metrics.durationMs, null)
+  deepEqual(disclosure.props.metrics.toolCalls, 2)
+  deepEqual(disclosure.props.metrics.outputTokens, 1400)
 })
 
-test('fold: missing usage suppresses the token total', () => {
+test('fold: missing usage preserves the confirmed token lower bound', () => {
   const { api, ChatNodeSeat } = buildSandbox()
   const fixture = completedFixture()
   fixture.nodes.find((node) => node.key === 'think').data.usage = undefined
@@ -249,14 +736,81 @@ test('fold: missing usage suppresses the token total', () => {
     nodeStore: nodeStoreFrom(fixture.nodes),
     timeline: timelineFrom([fixture.turn]),
     sessionId: 'session-a',
-    seat: {},
   }), api, ChatNodeSeat)
-  deepEqual(result.find((item) => item.kind === 'disclosure').props.tokenCount, null)
+  const metrics = result.find((item) => item.kind === 'disclosure').props.metrics
+  deepEqual(metrics.inputTokens, 2150)
+  deepEqual(metrics.outputTokens, 900)
+  deepEqual(metrics.tokenUsagePartial, true)
+})
+
+test('fold: missing closing usage preserves the earlier confirmed token lower bound', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  fixture.nodes.find((node) => node.key === 'answer').data.usage = undefined
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-a',
+  }), api, ChatNodeSeat)
+  const metrics = result.find((item) => item.kind === 'disclosure').props.metrics
+  deepEqual(metrics.inputTokens, 1200)
+  deepEqual(metrics.outputTokens, 500)
+  deepEqual(metrics.tokenUsagePartial, true)
+})
+
+for (const endReason of ['aborted', 'interrupted']) {
+test(`fold: ${endReason} turn folds and labels confirmed usage as a lower bound`, () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  const interrupted = turnLocation(1, 'closed', 1000, 85000, endReason)
+  fixture.nodes.find((node) => node.key === 'answer').data.usage = undefined
+  for (const node of fixture.nodes) {
+    if (node.location.kind === 'step' || node.location.kind === 'turn') node.location = { ...node.location, turn: interrupted }
+  }
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([interrupted]),
+    sessionId: `session-${endReason}`,
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'seat', 'disclosure', 'seat', 'seat'])
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'steering', 'answer', 'tail'])
+  const disclosureProps = result.find((item) => item.kind === 'disclosure').props
+  deepEqual(disclosureProps.activity, ['think', 'tool-1', 'tool-2'])
+  deepEqual(disclosureProps.metrics.inputTokens, 1200)
+  deepEqual(disclosureProps.metrics.outputTokens, 500)
+  deepEqual(disclosureProps.metrics.tokenUsagePartial, true)
+
+  const disclosure = api.disclosure(disclosureProps)
+  const button = disclosure.props.children[0]
+  const suffix = endReason === 'aborted' ? 'Stopped' : 'Interrupted'
+  deepEqual(button.props['aria-label'], `Expand agent activity: Worked for 1m 24s | 2 tool calls | ≥ 1.2K input tokens | ≥ 500 output tokens - ${suffix}`)
+  deepEqual(elementText(button.props.children), `Worked for 1m 24s2 tool calls≥ 1.2K input tokens≥ 500 output tokens - ${suffix}`)
+  deepEqual(button.props.children.props.children.at(-1).type, api.chevron)
+  deepEqual(elementsWithClass(button.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['2', '1.2K', '500'])
+})
+}
+
+test('fold: no usage samples keeps token totals hidden', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const fixture = completedFixture()
+  fixture.nodes.find((node) => node.key === 'think').data.usage = undefined
+  fixture.nodes.find((node) => node.key === 'answer').data.usage = undefined
+  const result = classify(api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-no-usage',
+  }), api, ChatNodeSeat)
+  const metrics = result.find((item) => item.kind === 'disclosure').props.metrics
+  deepEqual(metrics.inputTokens, null)
+  deepEqual(metrics.outputTokens, null)
+  deepEqual(metrics.tokenUsagePartial, false)
 })
 
 for (const [name, status, reason] of [
   ['failed', 'closed', 'error'],
-  ['interrupted', 'closed', 'interrupted'],
   ['open', 'open', undefined],
 ]) {
   test(`fold: ${name} turn remains fully visible`, () => {
@@ -271,46 +825,217 @@ for (const [name, status, reason] of [
       nodeStore: nodeStoreFrom(fixture.nodes),
       timeline: timelineFrom([changed]),
       sessionId: 'session-a',
-      seat: {},
     }), api, ChatNodeSeat)
-    deepEqual(result.every((item) => item.kind === 'seat'), true)
+    deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+    deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
   })
 }
 
-test('disclosure: accessible control and open state survive remounts', () => {
-  const { api } = buildSandbox()
+test('disclosure: accessible control, ownership, and open state survive remounts', () => {
+  const { api, renderNode } = buildSandbox()
   const props = {
     activity: ['think'],
-    durationMs: 84000,
-    toolCount: 1,
-    tokenCount: 1400,
+    metrics: { durationMs: 84000, toolCalls: 1, inputTokens: 2000, outputTokens: 1400 },
     foldKey: 'session-persist:7',
-    seat: { t: () => '1m 24s' },
+    renderNode,
+    t: () => '1m 24s',
   }
   const closed = api.disclosure(props)
   const closedButton = closed.props.children[0]
   deepEqual(closedButton.props['aria-expanded'], false)
   assert.match(closedButton.props['aria-label'], /^Expand agent activity:/)
   assert.ok(closedButton.props['aria-controls'])
-  deepEqual(closed.props.children[1].props['aria-hidden'], true)
-  deepEqual(closed.props.children[1].props.children, null)
+  assert.match(closedButton.props['aria-controls'], /^ch4acko3-dsh-turn-fold-body-/)
+  const summaryChildren = closedButton.props.children.props.children
+  deepEqual(summaryChildren.at(-1).type, api.chevron)
+  deepEqual(summaryChildren.at(-1).key, 'chevron')
+  deepEqual(closed.props['data-ch4acko3-dsh-turn-fold'], '')
+  deepEqual(closed.props['data-dsh-fold-owner'], '@ch4acko3/dsh-turn-fold')
+  deepEqual(closed.props['data-dsh-fold-scope'], 'turn')
+  deepEqual(closed.props.children[1].props.className, '__ch4acko3-dsh-turn-fold__rule')
+  deepEqual(closed.props.children[2].props['aria-hidden'], true)
+  deepEqual(closed.props.children[2].props.children, null)
   closedButton.props.onClick()
 
   const reopened = api.disclosure(props)
   const reopenedButton = reopened.props.children[0]
   deepEqual(reopenedButton.props['aria-expanded'], true)
   assert.match(reopenedButton.props['aria-label'], /^Collapse agent activity:/)
-  deepEqual(reopened.props['data-turn-fold-open'], 'true')
-  deepEqual(reopened.props.children[1].props.inert, false)
+  deepEqual(reopened.props['data-ch4acko3-dsh-turn-fold-open'], 'true')
+  deepEqual(reopened.props.children[2].props.inert, false)
 })
 
-test('helpers: output token reader rejects incomplete and invalid usage', () => {
+test('disclosure: real React state opens and closes the mounted body', () => {
+  function Seat({ nodeKey }) {
+    return React.createElement('div', { 'data-seat': nodeKey })
+  }
+  const api = buildRuntime(React, reactJsxRuntime)
+  const props = {
+    activity: ['think'],
+    closingReasoning: ['closing thought'],
+    metrics: { durationMs: 84000, toolCalls: 1, inputTokens: 2000, outputTokens: 1400 },
+    foldKey: 'session-react:1',
+    renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+    t: () => '1m 24s',
+  }
+  withGlobals({ matchMedia: () => ({ matches: true }) }, () => {
+    let rendered
+    TestRenderer.act(() => {
+      rendered = TestRenderer.create(React.createElement(api.disclosure, props))
+    })
+    let button = rendered.root.findByType('button')
+    deepEqual(button.props['aria-expanded'], false)
+
+    TestRenderer.act(() => button.props.onClick())
+    button = rendered.root.findByType('button')
+    deepEqual(button.props['aria-expanded'], true)
+    deepEqual(rendered.root.findAllByProps({ 'data-seat': 'think' }).length, 1)
+    deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'closing thought' }).length, 1)
+
+    TestRenderer.act(() => button.props.onClick())
+    button = rendered.root.findByType('button')
+    deepEqual(button.props['aria-expanded'], false)
+    deepEqual(rendered.root.findAllByProps({ 'data-seat': 'think' }).length, 0)
+    deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'closing thought' }).length, 0)
+
+    TestRenderer.act(() => rendered.unmount())
+  })
+})
+
+test('helpers: token usage reader totals billed input and rejects invalid usage', () => {
   const { api } = buildSandbox()
-  deepEqual(api.outputTokens({ outputTokens: 0 }), 0)
-  deepEqual(api.outputTokens({ outputTokens: 500 }), 500)
-  deepEqual(api.outputTokens({ outputTokens: -1 }), null)
-  deepEqual(api.outputTokens({ outputTokens: '500' }), null)
-  deepEqual(api.outputTokens(null), null)
+  deepEqual(api.usage({ inputTokens: 100, outputTokens: 50, cacheReadTokens: 20, cacheWriteTokens: 10, reasoningTokens: 5 }), {
+    inputTokens: 130,
+    outputTokens: 50,
+    cacheReadTokens: 20,
+    cacheWriteTokens: 10,
+    reasoningTokens: 5,
+  })
+  deepEqual(api.usage({ inputTokens: 100, outputTokens: -1 }), null)
+  deepEqual(api.usage({ inputTokens: '100', outputTokens: 50 }), null)
+  deepEqual(api.usage(null), null)
+})
+
+function withGlobals(values, fn) {
+  const previous = new Map()
+  for (const [key, value] of Object.entries(values)) {
+    previous.set(key, Object.hasOwn(globalThis, key) ? { value: globalThis[key] } : null)
+    globalThis[key] = value
+  }
+  try {
+    return fn()
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === null) delete globalThis[key]
+      else globalThis[key] = value.value
+    }
+  }
+}
+
+class FakeElement {
+  constructor(key, parentElement = null) {
+    this.dataset = key === null ? {} : { chatAnchorKey: key }
+    this.parentElement = parentElement
+  }
+
+  closest() {
+    for (let element = this; element !== null; element = element.parentElement) {
+      if (element.dataset.chatAnchorKey) return element
+    }
+    return null
+  }
+}
+
+test('interaction: a selection crossing activity keeps every intersected row open', () => {
+  const thinkRow = new FakeElement('think')
+  const answerRow = new FakeElement('answer')
+  const selection = {
+    isCollapsed: false,
+    anchorNode: { nodeType: 3, parentElement: answerRow },
+    focusNode: { nodeType: 3, parentElement: thinkRow },
+    rangeCount: 1,
+    getRangeAt() {
+      return { intersectsNode: (node) => node === thinkRow || node === answerRow }
+    },
+  }
+  withGlobals({
+    Element: FakeElement,
+    document: {
+      activeElement: null,
+      documentElement: { lang: 'en' },
+      head: { appendChild() {} },
+      getElementById: () => ({}),
+      querySelectorAll: () => [thinkRow, answerRow],
+    },
+    window: { getSelection: () => selection },
+  }, () => {
+    const { api, ChatNodeSeat } = buildSandbox()
+    deepEqual([...api.interactionKeys()], ['think', 'answer'])
+    const fixture = completedFixture()
+    const result = classify(api.render({
+      order: fixture.order,
+      nodeStore: nodeStoreFrom(fixture.nodes),
+      timeline: timelineFrom([fixture.turn]),
+      sessionId: 'session-a',
+    }), api, ChatNodeSeat)
+    deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
+    deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+  })
+})
+
+test('style: module reload refreshes only the scoped plugin style', () => {
+  const style = { textContent: 'stale' }
+  let requestedId
+  withGlobals({
+    document: {
+      documentElement: { lang: 'en' },
+      head: { appendChild() {} },
+      getElementById(id) {
+        requestedId = id
+        return style
+      },
+    },
+  }, () => {
+    buildSandbox()
+    deepEqual(requestedId, 'ch4acko3-dsh-turn-fold-style')
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-metric-roll/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold__separator/)
+    assert.doesNotMatch(style.textContent, /__ch4acko3-dsh-turn-fold__header:hover/)
+  })
+})
+
+test('style: a foreign unscoped style is never reused or overwritten', () => {
+  const foreignStyle = { textContent: 'foreign css' }
+  const appended = []
+  let queriedForeignStyle = false
+  withGlobals({
+    document: {
+      documentElement: { lang: 'en' },
+      getElementById: () => null,
+      querySelector() {
+        queriedForeignStyle = true
+        return foreignStyle
+      },
+      createElement: () => ({
+        id: '',
+        textContent: '',
+        attributes: {},
+        setAttribute(name, value) {
+          this.attributes[name] = value
+        },
+      }),
+      head: { appendChild: (node) => appended.push(node) },
+    },
+  }, () => {
+    buildSandbox()
+    deepEqual(queriedForeignStyle, false)
+    deepEqual(foreignStyle.textContent, 'foreign css')
+    deepEqual(appended.length, 1)
+    deepEqual(appended[0].id, 'ch4acko3-dsh-turn-fold-style')
+    deepEqual(appended[0].attributes['data-plugin'], '@ch4acko3/dsh-turn-fold')
+    assert.match(appended[0].textContent, /__ch4acko3-dsh-turn-fold/)
+  })
 })
 
 process.stdout.write(`\n${passed} passed, ${failed} failed\n`)
