@@ -15,6 +15,7 @@
   "summary.tokensPerSecond": "{count} tokens/秒",
   "summary.stoppedSuffix": " - 已停止",
   "summary.interruptedSuffix": " - 已中断",
+  "activityGroup.think": "Think",
   "activityGroup.tools.one": "{count} 次工具调用",
   "activityGroup.tools.many": "{count} 次工具调用",
   "activityGroup.thinkAndTools.one": "Think · {count} 次工具调用",

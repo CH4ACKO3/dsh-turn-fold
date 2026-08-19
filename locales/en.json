@@ -15,6 +15,7 @@
   "summary.tokensPerSecond": "{count} tokens/s",
   "summary.stoppedSuffix": " - Stopped",
   "summary.interruptedSuffix": " - Interrupted",
+  "activityGroup.think": "Think",
   "activityGroup.tools.one": "{count} tool call",
   "activityGroup.tools.many": "{count} tool calls",
   "activityGroup.thinkAndTools.one": "Think · {count} tool call",
