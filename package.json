@@ -5,6 +5,7 @@
   "main": "./index.cjs",
   "files": [
     "README.md",
+    "README.zh-CN.md",
     "harmony.patch.yml",
     "index.cjs",
     "inline-source.cjs",

@@ -1,19 +1,24 @@
 # dsh-turn-fold
 
+English | [简体中文](README.zh-CN.md)
+
 A [dsh-harmony](https://github.com/memorax-ai/dsh-harmony) provider that adds
 Codex-Desktop-style turn folding to the DSH WebUI conversation.
 
-During a turn, the native thinking summary, intermediate notes, commands, and
-tool calls keep streaming unchanged. When a turn completes, known Agent
-activity moves into one compact disclosure immediately before the final answer.
-The row reports wall time, tool-call count, and output tokens only when the
-loaded turn contains enough data to calculate each metric without guessing.
+During a turn, the summary bar remains visible while native thinking, notes,
+commands, and tool calls keep streaming. Consecutive reasoning and tool activity
+share one compact group from the second item onward. When a turn settles, known
+Agent activity, including context injection, moves into one disclosure
+immediately before the final answer. Its configurable metrics default to wall
+time, tool-call count, and input/output tokens, and appear only when the loaded
+turn contains enough data to calculate them without guessing.
 
 The final answer is located through `turn-tail.closing.finalNode`, not
-`finish_reason` or DOM position. A turn remains expanded when DSH marks its
-closing branch unavailable, when any later node follows the closing answer, or
-while the user has keyboard focus or an active text selection inside its
-activity. Failed, interrupted, max-token, closing-less, and open turns also stay
+`finish_reason` or DOM position. Completed, stopped, and interrupted turns fold,
+with distinct status labels for the latter two. A turn remains expanded when
+DSH marks its closing branch unavailable, when any later node follows the
+closing answer, or while the user has keyboard focus or an active text selection
+inside its activity. Failed, max-token, closing-less, and open turns also stay
 expanded so errors and unfinished work are never hidden.
 
 Expanding reuses the original native node renderers, so tool details, copy, and
@@ -30,13 +35,13 @@ are never modified.
 
 | Patch | Selector (expect 1) | Effect |
 | --- | --- | --- |
-| `inject-turn-fold-runtime` | `FunctionDeclaration[name.name="ChatView"]` | Injects the fold renderer + disclosure UI into the module factory |
+| `inject-turn-fold-runtime` | `FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])` | Injects the fold renderer + disclosure UI into either native or decorated `ChatView` |
 | `rewrite-node-render-loop` | `CallExpression[expression.name.name="map"][expression.expression.name="order"]` | Replaces the `order.map(...)` node loop with the per-turn renderer |
 
 ## Install
 
 ```sh
-dsh plugin --profile web add ./dsh-turn-fold
+dsh plugin --profile web add github:CH4ACKO3/dsh-turn-fold
 dsh harmony status --profile web   # both patches must be `bound`
 ```
 
