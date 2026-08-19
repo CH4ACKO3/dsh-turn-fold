@@ -393,11 +393,13 @@ function __ch4acko3DshTurnFoldLiveDuration(metrics, running) {
 function __ch4acko3DshTurnFoldSpacedDuration(value) {
   return value.replace(/(\d)(?=(?:小时|分钟|秒|分|时))/g, "$1 ").replace(/(小时|分钟|秒|分|时)(?=\d)/g, "$1 ");
 }
-function __ch4acko3DshTurnFoldCountPart(field, key, count, display, qualifier) {
+function __ch4acko3DshTurnFoldAnimatedPart(field, key, parameter, display, animationKey, qualifier) {
   var marker = "__ch4acko3_dsh_turn_fold_value__";
-  var template = __ch4acko3DshTurnFoldText(key, { count: marker });
+  var params = {};
+  params[parameter] = marker;
+  var template = __ch4acko3DshTurnFoldText(key, params);
   var position = template.indexOf(marker);
-  if (position < 0) throw new Error("@ch4acko3/dsh-turn-fold: summary locale omitted {count} for " + key);
+  if (position < 0) throw new Error("@ch4acko3/dsh-turn-fold: summary locale omitted {" + parameter + "} for " + key);
   qualifier = qualifier || "";
   return {
     field: field,
@@ -406,8 +408,16 @@ function __ch4acko3DshTurnFoldCountPart(field, key, count, display, qualifier) {
     value: display,
     suffix: template.slice(position + marker.length),
     rolling: true,
-    animationKey: String(count)
+    animationKey: String(animationKey)
   };
+}
+function __ch4acko3DshTurnFoldCountPart(field, key, count, display, qualifier) {
+  return __ch4acko3DshTurnFoldAnimatedPart(field, key, "count", display, count, qualifier);
+}
+function __ch4acko3DshTurnFoldDurationPart(field, key, duration) {
+  var part = __ch4acko3DshTurnFoldAnimatedPart(field, key, "duration", duration, duration);
+  part.segments = duration.split(/(\d+)/).filter(function (segment) { return segment.length > 0; });
+  return part;
 }
 function __ch4acko3DshTurnFoldSummaryParts(metrics, running, completed, durationT) {
   var fields = react.useSyncExternalStore(__ch4acko3DshTurnFoldSubscribeSettings, __ch4acko3DshTurnFoldGetSettingsSnapshot, __ch4acko3DshTurnFoldGetSettingsSnapshot);
@@ -417,10 +427,10 @@ function __ch4acko3DshTurnFoldSummaryParts(metrics, running, completed, duration
     var field = fields[i];
     var value = metrics[field];
     if (field === "duration") {
-      if (typeof durationMs === "number" && isFinite(durationMs) && durationMs >= 0) parts.push({
-        field: field,
-        text: __ch4acko3DshTurnFoldText(completed ? "summary.elapsed" : "summary.duration", { duration: __ch4acko3DshTurnFoldSpacedDuration(formatRunDuration(durationMs, durationT)) })
-      });
+      if (typeof durationMs === "number" && isFinite(durationMs) && durationMs >= 0) {
+        var duration = __ch4acko3DshTurnFoldSpacedDuration(formatRunDuration(durationMs, durationT));
+        parts.push(__ch4acko3DshTurnFoldDurationPart(field, completed ? "summary.elapsed" : "summary.duration", duration));
+      }
     } else if (field === "toolCalls" || field === "modelCalls") {
       if (typeof value === "number") parts.push(__ch4acko3DshTurnFoldCountPart(field, "summary." + field + (value === 1 ? ".one" : ".many"), value, String(value)));
     } else if (field === "timeToFirstToken") {
@@ -446,14 +456,18 @@ function __ch4acko3DshTurnFoldSummaryChildren(parts, disclosure, statusSuffix) {
   for (var i = 0; i < parts.length; i++) {
     var part = parts[i];
     if (i > 0) children.push(react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold__separator", "aria-hidden": true }, "separator-" + i));
-    var content = part.rolling ? [
-      part.prefix,
-      react_jsx_runtime.jsx("span", {
+    var animatedValue = part.segments === void 0
+      ? react_jsx_runtime.jsx("span", {
         className: "__ch4acko3-dsh-turn-fold__metricWindow",
         children: react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold__metricValue", children: part.value }, part.field + "-" + part.animationKey)
-      }, "value"),
-      part.suffix
-    ] : part.text;
+      }, "value")
+      : part.segments.map(function (segment, segmentIndex) {
+        return /^\d+$/.test(segment) ? react_jsx_runtime.jsx("span", {
+          className: "__ch4acko3-dsh-turn-fold__metricWindow",
+          children: react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold__metricValue", children: segment }, part.field + "-" + segmentIndex + "-" + segment)
+        }, "segment-" + segmentIndex) : segment;
+      });
+    var content = part.rolling ? [part.prefix, animatedValue, part.suffix] : part.text;
     children.push((part.rolling ? react_jsx_runtime.jsxs : react_jsx_runtime.jsx)("span", { className: "__ch4acko3-dsh-turn-fold__metric", children: content }, part.field));
   }
   if (statusSuffix) children.push(react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold__metric", children: statusSuffix }, "status"));
