@@ -5,6 +5,8 @@ English | [简体中文](README.zh-CN.md)
 A [dsh-harmony](https://github.com/memorax-ai/dsh-harmony) provider that adds
 Codex-Desktop-style turn folding to the DSH WebUI conversation.
 
+https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
+
 During a turn, the summary bar remains visible while native thinking, notes,
 commands, and tool calls keep streaming. Consecutive reasoning and tool activity
 share one compact group from the second item onward. When a turn settles, known
