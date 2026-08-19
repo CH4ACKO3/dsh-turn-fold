@@ -179,6 +179,20 @@ test('transform: preserves an earlier Patch extension inside the native node ren
   assert.match(composed, /thirdPartyCompatibilityMarker/)
 })
 
+test('transform: runtime injection accepts a ChatView decorated by an earlier Component Patch', () => {
+  const sf = sourceFile(TARGET_PATH, targetSource)
+  const [chatView] = tsquery(sf, 'FunctionDeclaration[name.name="ChatView"]')
+  assert.ok(chatView, 'published ChatView declaration is missing')
+  const decorated = targetSource.slice(0, chatView.getStart(sf))
+    + `const ChatView = decorate(${targetSource.slice(chatView.getStart(sf), chatView.getEnd())});`
+    + targetSource.slice(chatView.getEnd())
+  let composed = decorated
+  for (const patch of PATCHES) composed = applyPatch(composed, patch)
+  deepEqual(sourceFile('client.decorated.patched.js', composed).parseDiagnostics.length, 0)
+  assert.match(composed, /__ch4acko3DshTurnFoldLocaleNamespace[\s\S]+const ChatView = decorate\(function ChatView/)
+  assert.match(composed, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId, renderNode:/)
+})
+
 // ---- Runtime sandbox ---------------------------------------------------------
 
 function formatDuration(ms, t) {

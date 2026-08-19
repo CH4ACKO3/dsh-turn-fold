@@ -28,7 +28,7 @@ module.exports = [
   {
     id: 'inject-turn-fold-runtime',
     target: TARGET,
-    select: 'FunctionDeclaration[name.name="ChatView"]',
+    select: 'FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])',
     expect: 1,
     apply({ node, sourceFile, edit }) {
       edit.prependLeft(node.getStart(sourceFile), INLINE + '\n\n')
