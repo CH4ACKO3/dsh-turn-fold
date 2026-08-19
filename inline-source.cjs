@@ -681,13 +681,24 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
     ]
   });
 }
+function __ch4acko3DshTurnFoldPlaybackTime(timeline) {
+  var clock = timeline.playbackClock;
+  return clock !== void 0 && clock.kind === "historical" && typeof clock.time === "number" && isFinite(clock.time)
+    ? clock.time
+    : null;
+}
 function __ch4acko3DshTurnFoldPlanMetrics(plan, nodeStore, timeline) {
   var turnLoc = timeline.turns.get(plan.turn);
   var startEv = turnLoc === void 0 ? void 0 : turnLoc.start;
   var endEv = turnLoc === void 0 ? void 0 : turnLoc.end;
   var startTime = startEv !== void 0 && typeof startEv.time === "number" ? startEv.time : null;
   var complete = startTime !== null && endEv !== void 0 && typeof endEv.time === "number";
-  var durationMs = complete && endEv.time >= startTime ? endEv.time - startTime : null;
+  var playbackTime = __ch4acko3DshTurnFoldPlaybackTime(timeline);
+  var durationMs = complete && endEv.time >= startTime
+    ? endEv.time - startTime
+    : startTime !== null && playbackTime !== null
+      ? Math.max(0, playbackTime - startTime)
+      : null;
   var metrics = {
     startTime: startTime,
     durationMs: durationMs,
@@ -757,6 +768,7 @@ function __ch4acko3DshTurnFoldRender(props) {
   var order = props.order;
   var nodeStore = props.nodeStore;
   var timeline = props.timeline;
+  var playbackTime = __ch4acko3DshTurnFoldPlaybackTime(timeline);
   var renderNode = props.renderNode;
   var sessionId = props.sessionId;
   var orderPositions = new Map();
@@ -840,7 +852,7 @@ function __ch4acko3DshTurnFoldRender(props) {
         completed: plan.endReason === "completed",
         metrics: __ch4acko3DshTurnFoldPlanMetrics(plan, nodeStore, timeline),
         termination: plan.endReason === "aborted" || plan.endReason === "interrupted" ? plan.endReason : void 0,
-        running: plan.status !== "closed",
+        running: plan.status !== "closed" && playbackTime === null,
         t: props.t
       }, "ch4acko3-dsh-turn-fold-summary-" + String(sessionId) + "-" + plan.turn) });
     }

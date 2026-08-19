@@ -498,6 +498,29 @@ test('summary: a running turn shows a top bar before activity without hiding str
   deepEqual(summary.props.children[1].props.className, '__ch4acko3-dsh-turn-fold__rule')
 })
 
+test('summary: historical playback uses the projected clock without starting a live timer', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(3, 'open', 1000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'historical-answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 1, usage: { inputTokens: 800, outputTokens: 120 } } },
+  ]
+  const timeline = timelineFrom([turn])
+  timeline.playbackClock = { kind: 'historical', time: 5000 }
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline,
+    sessionId: 'session-playback',
+  }), api, ChatNodeSeat)
+
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat'])
+  deepEqual(result[1].props.running, false)
+  deepEqual(result[1].props.metrics.startTime, 1000)
+  deepEqual(result[1].props.metrics.durationMs, 4000)
+  deepEqual(elementText(api.summary(result[1].props).props.children[0].props.children), 'Worked for 4s0 tool calls800 input tokens120 output tokens')
+})
+
 test('activity groups: one tool stays native and the second adjacent tool starts a closed group', () => {
   const turn = turnLocation(4, 'open', Date.now() - 2000)
   const oneTool = [
