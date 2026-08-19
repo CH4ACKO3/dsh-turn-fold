@@ -493,7 +493,7 @@ test('summary: a running turn shows a top bar before activity without hiding str
   deepEqual(header.props['aria-label'], 'Worked for 4s | 1 tool call | 800 input tokens | 120 output tokens')
   deepEqual(elementText(header.props.children), 'Worked for 4s1 tool call800 input tokens120 output tokens')
   deepEqual(elementsWithClass(header.props.children, '__ch4acko3-dsh-turn-fold__separator').length, 3)
-  deepEqual(elementsWithClass(header.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['1', '800', '120'])
+  deepEqual(elementsWithClass(header.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['4', '1', '800', '120'])
   deepEqual(header.props.role, 'status')
   deepEqual(summary.props.children[1].props.className, '__ch4acko3-dsh-turn-fold__rule')
 })
@@ -718,6 +718,34 @@ test('summary: count metrics remount only their numeric value when the count cha
   deepEqual(secondValue.key, 'toolCalls-2')
   deepEqual(firstValue.props.children, '1')
   deepEqual(secondValue.props.children, '2')
+})
+
+test('summary: elapsed seconds use the same rolling value animation as count metrics', () => {
+  const { api } = buildSandbox()
+  api.setSummaryFields(['duration'])
+  const first = api.summary({ metrics: { durationMs: 1000 }, running: false, completed: true, t: () => '1s' })
+  const second = api.summary({ metrics: { durationMs: 2000 }, running: false, completed: true, t: () => '2s' })
+  const firstValue = elementsWithClass(first, '__ch4acko3-dsh-turn-fold__metricValue')[0]
+  const secondValue = elementsWithClass(second, '__ch4acko3-dsh-turn-fold__metricValue')[0]
+  deepEqual(firstValue.key, 'duration-0-1')
+  deepEqual(secondValue.key, 'duration-0-2')
+  deepEqual(firstValue.props.children, '1')
+  deepEqual(secondValue.props.children, '2')
+  deepEqual(elementText(second.props.children[0].props.children), 'Took 2s')
+})
+
+test('summary: duration units and unchanged minute digits stay still while seconds roll', () => {
+  const { api } = buildSandbox()
+  api.setSummaryFields(['duration'])
+  const first = api.summary({ metrics: { durationMs: 84000 }, running: false, completed: true, t: () => '1m 24s' })
+  const second = api.summary({ metrics: { durationMs: 85000 }, running: false, completed: true, t: () => '1m 25s' })
+  const firstValues = elementsWithClass(first, '__ch4acko3-dsh-turn-fold__metricValue')
+  const secondValues = elementsWithClass(second, '__ch4acko3-dsh-turn-fold__metricValue')
+  deepEqual(firstValues.map((value) => value.key), ['duration-0-1', 'duration-2-24'])
+  deepEqual(secondValues.map((value) => value.key), ['duration-0-1', 'duration-2-25'])
+  deepEqual(firstValues.map(elementText), ['1', '24'])
+  deepEqual(secondValues.map(elementText), ['1', '25'])
+  deepEqual(elementText(second.props.children[0].props.children), 'Took 1m 25s')
 })
 
 test('settings: browser runtime contributes a native plugin-settings card for its namespace', () => {
@@ -1002,7 +1030,7 @@ test(`fold: ${endReason} turn folds and labels confirmed usage as a lower bound`
   deepEqual(button.props['aria-label'], `Expand agent activity: Worked for 1m 24s | 2 tool calls | ≥ 1.2K input tokens | ≥ 500 output tokens - ${suffix}`)
   deepEqual(elementText(button.props.children), `Worked for 1m 24s2 tool calls≥ 1.2K input tokens≥ 500 output tokens - ${suffix}`)
   deepEqual(button.props.children.props.children.at(-1).type, api.chevron)
-  deepEqual(elementsWithClass(button.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['2', '1.2K', '500'])
+  deepEqual(elementsWithClass(button.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['1', '24', '2', '1.2K', '500'])
 })
 }
 
