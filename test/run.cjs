@@ -524,10 +524,10 @@ test('activity groups: one tool stays native and the second adjacent tool starts
   }), second.api, second.ChatNodeSeat)
   deepEqual(grouped.map((item) => item.kind), ['seat', 'summary', 'activity-group'])
   const group = grouped.find((item) => item.kind === 'activity-group')
-  deepEqual(group.props.toolKeys, ['tool-1', 'tool-2'])
-  deepEqual(group.props.reasoning, [])
-  deepEqual(group.props.toolCount, 2)
-  deepEqual(group.props.hasThink, false)
+  deepEqual(group.props.items, [
+    { kind: 'tool', key: 'tool-1' },
+    { kind: 'tool', key: 'tool-2' },
+  ])
   deepEqual(group.props.running, true)
   deepEqual(group.props.failed, 0)
   deepEqual(second.renderCalls, ['user'])
@@ -569,13 +569,14 @@ test('activity groups: reasoning and its following tools share one closed group 
   }), api, ChatNodeSeat)
   deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'activity-text', 'activity-group'])
   const group = result[3]
-  deepEqual(group.props.reasoning, ['plan'])
-  deepEqual(group.props.toolKeys, ['tool-1', 'tool-2'])
-  deepEqual(group.props.toolCount, 2)
-  deepEqual(group.props.hasThink, true)
+  deepEqual(group.props.items, [
+    { kind: 'reasoning', key: 'think:0', text: 'plan' },
+    { kind: 'tool', key: 'tool-1' },
+    { kind: 'tool', key: 'tool-2' },
+  ])
   deepEqual(result[2].child.props.nodeKey, 'think')
   deepEqual(renderCalls, ['user', 'think'])
-  deepEqual(api.activityGroup(group.props).props.children.props.title, 'Think · 2 tool calls')
+  deepEqual(api.activityGroup(group.props).props.children[0].props.title, 'Think · 2 tool calls')
 })
 
 test('activity groups: visible assistant prose is a hard boundary', () => {
@@ -596,13 +597,15 @@ test('activity groups: visible assistant prose is a hard boundary', () => {
   }), api, ChatNodeSeat)
   const groups = result.filter((item) => item.kind === 'activity-group')
   deepEqual(groups.length, 1)
-  deepEqual(groups[0].props.reasoning, ['plan'])
-  deepEqual(groups[0].props.toolKeys, ['tool-1'])
+  deepEqual(groups[0].props.items, [
+    { kind: 'reasoning', key: 'think:0', text: 'plan' },
+    { kind: 'tool', key: 'tool-1' },
+  ])
   deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'status', 'tool-2'])
 })
 
-test('activity groups: consecutive Think nodes without tools stay native', () => {
-  const { api, ChatNodeSeat } = buildSandbox()
+test('activity groups: consecutive reasoning nodes form one closed group', () => {
+  const { api, ChatNodeSeat, renderCalls } = buildSandbox()
   const turn = turnLocation(10, 'open', Date.now() - 2000)
   const nodes = [
     { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
@@ -615,8 +618,35 @@ test('activity groups: consecutive Think nodes without tools stay native', () =>
     timeline: timelineFrom([turn]),
     sessionId: 'session-think-only',
   }), api, ChatNodeSeat)
-  deepEqual(result.filter((item) => item.kind === 'activity-group').length, 0)
-  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'think-1', 'think-2'])
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'activity-group'])
+  deepEqual(result[2].props.items, [
+    { kind: 'reasoning', key: 'think-1:0', text: 'one' },
+    { kind: 'reasoning', key: 'think-2:0', text: 'two' },
+  ])
+  deepEqual(api.activityGroup(result[2].props).props.children[0].props.title, 'Think')
+  deepEqual(renderCalls, ['user'])
+})
+
+test('activity groups: reasoning and tools preserve their original interleaving', () => {
+  const { api } = buildSandbox()
+  const turn = turnLocation(11, 'open', Date.now() - 2000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
+    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'inspect result' }] } },
+    { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-interleaved-activity',
+  }), api, {})
+  deepEqual(result[2].props.items, [
+    { kind: 'tool', key: 'tool-1' },
+    { kind: 'reasoning', key: 'think:0', text: 'inspect result' },
+    { kind: 'tool', key: 'tool-2' },
+  ])
 })
 
 test('activity groups: failure count is visible without expanding', () => {
@@ -624,18 +654,17 @@ test('activity groups: failure count is visible without expanding', () => {
   const group = api.activityGroup({
     failed: 1,
     foldKey: 'activity:session:1:tool-1',
-    hasThink: false,
-    reasoning: [],
+    items: [{ kind: 'tool', key: 'tool-1' }, { kind: 'tool', key: 'tool-2' }],
     renderNode,
     running: false,
     t: () => '',
-    toolCount: 2,
-    toolKeys: ['tool-1', 'tool-2'],
   })
   deepEqual(group.props['data-state'], 'error')
   deepEqual(group.props['data-dsh-fold-scope'], 'activity-run')
-  deepEqual(group.props.children.props.title, '2 tool calls')
-  deepEqual(elementText(group.props.children.props.collapsedContent), '1 failed')
+  deepEqual(group.props.children[0].props.title, '2 tool calls')
+  deepEqual(elementText(group.props.children[0].props.collapsedContent), '1 failed')
+  deepEqual(group.props.children[1].props.className, '__ch4acko3-dsh-turn-fold-activity__clip')
+  deepEqual(group.props.children[1].props['aria-hidden'], true)
 })
 
 test('summary: native locale translation distinguishes completed, stopped, and interrupted turns in Chinese', () => {
@@ -821,7 +850,10 @@ test('summary: activity appended after the closing answer keeps the bar at the t
   }), api, ChatNodeSeat)
   deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat', 'seat', 'activity-group'])
   deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'answer', 'tail'])
-  deepEqual(result.find((item) => item.kind === 'activity-group').props.toolKeys, ['tool-1', 'tool-2'])
+  deepEqual(result.find((item) => item.kind === 'activity-group').props.items, [
+    { kind: 'tool', key: 'tool-1' },
+    { kind: 'tool', key: 'tool-2' },
+  ])
 })
 
 test('fold: an unknown node after the closing answer also disables folding', () => {
@@ -1067,7 +1099,10 @@ test('disclosure: adjacent tools stay nested in a closed group when the turn ope
   const opened = api.disclosure(disclosureElement.props)
   const groups = elementsOfType(opened, api.activityGroup)
   deepEqual(groups.length, 1)
-  deepEqual(groups[0].props.toolKeys, ['tool-1', 'tool-2'])
+  deepEqual(groups[0].props.items, [
+    { kind: 'tool', key: 'tool-1' },
+    { kind: 'tool', key: 'tool-2' },
+  ])
   deepEqual(renderCalls, ['user', 'answer', 'tail', 'think'])
 })
 
@@ -1079,13 +1114,10 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
   const baseProps = {
     failed: 0,
     foldKey: 'activity:session-growth:1:think-1',
-    hasThink: true,
-    reasoning: ['plan'],
+    items: [{ kind: 'reasoning', key: 'think-1:0', text: 'plan' }, { kind: 'tool', key: 'tool-1' }],
     renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
     running: true,
     t: () => '',
-    toolCount: 1,
-    toolKeys: ['tool-1'],
   }
   let rendered
   TestRenderer.act(() => {
@@ -1101,7 +1133,15 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
   deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 1)
 
   TestRenderer.act(() => {
-    rendered.update(React.createElement(api.activityGroup, { ...baseProps, reasoning: ['plan', 'inspect result'], toolCount: 2, toolKeys: ['tool-1', 'tool-2'] }))
+    rendered.update(React.createElement(api.activityGroup, {
+      ...baseProps,
+      items: [
+        { kind: 'reasoning', key: 'think-1:0', text: 'plan' },
+        { kind: 'tool', key: 'tool-1' },
+        { kind: 'reasoning', key: 'think-2:0', text: 'inspect result' },
+        { kind: 'tool', key: 'tool-2' },
+      ],
+    }))
   })
   button = rendered.root.findByType('button')
   deepEqual(button.props['aria-expanded'], true)
@@ -1109,6 +1149,48 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
   deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-2' }).length, 1)
   deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'inspect result' }).length, 1)
 
+  TestRenderer.act(() => rendered.unmount())
+})
+
+test('activity groups: closing animates before the mounted body is removed', () => {
+  function Seat({ nodeKey }) {
+    return React.createElement('div', { 'data-seat': nodeKey })
+  }
+  const api = buildRuntime(React, reactJsxRuntime)
+  const props = {
+    failed: 0,
+    foldKey: 'activity:session-motion:1:tool-1',
+    items: [{ kind: 'tool', key: 'tool-1' }, { kind: 'tool', key: 'tool-2' }],
+    renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+    running: false,
+    t: () => '',
+  }
+  let rendered
+  TestRenderer.act(() => {
+    rendered = TestRenderer.create(React.createElement(api.activityGroup, props))
+  })
+  let button = rendered.root.findByType('button')
+  TestRenderer.act(() => button.props.onClick())
+  let clip = rendered.root.findByProps({ className: '__ch4acko3-dsh-turn-fold-activity__clip' })
+  deepEqual(clip.props['aria-hidden'], false)
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 1)
+
+  let finishExit
+  withGlobals({
+    setTimeout(callback, delay) {
+      deepEqual(delay, 180)
+      finishExit = callback
+      return 1
+    },
+  }, () => {
+    TestRenderer.act(() => button.props.onClick())
+  })
+  clip = rendered.root.findByProps({ className: '__ch4acko3-dsh-turn-fold-activity__clip' })
+  deepEqual(clip.props['aria-hidden'], true)
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 1)
+
+  TestRenderer.act(() => finishExit())
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 0)
   TestRenderer.act(() => rendered.unmount())
 })
 
