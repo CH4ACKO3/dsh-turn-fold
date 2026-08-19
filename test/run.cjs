@@ -198,15 +198,30 @@ function compactTokens(value) {
 
 function buildRuntime(react, jsxRuntime) {
   const ReasoningRow = ({ text }) => jsxRuntime.jsx('div', { 'data-test-reasoning': text, children: text })
+  const uiPrimitives = {
+    DisclosureRow({ icon, title, collapsedContent, open, onToggle, children, ...props }) {
+      return jsxRuntime.jsxs('div', {
+        ...props,
+        'data-test-disclosure-row': '',
+        children: [
+          jsxRuntime.jsxs('button', { type: 'button', 'aria-expanded': open, onClick: onToggle, children: [icon, title, collapsedContent] }),
+          open ? children : null,
+        ],
+      })
+    },
+    IconApiOutline14: ({ size }) => jsxRuntime.jsx('span', { 'data-test-tool-icon': size }),
+    StateDot: ({ state }) => jsxRuntime.jsx('span', { 'data-test-state-dot': state }),
+  }
   const factory = new Function(
     'react',
     'react_jsx_runtime',
     'ReasoningRow',
     'formatRunDuration',
     'formatTokens',
-    `${INLINE}\nreturn { render: __ch4acko3DshTurnFoldRender, disclosure: __ch4acko3DshTurnFoldDisclosure, summary: __ch4acko3DshTurnFoldSummary, chevron: __ch4acko3DshTurnFoldChevron, settingsCard: __ch4acko3DshTurnFoldSettingsCard, metrics: __ch4acko3DshTurnFoldPlanMetrics, usage: __ch4acko3DshTurnFoldUsage, interactionKeys: __ch4acko3DshTurnFoldInteractionKeys, install: __ch4acko3DshTurnFoldInstall };`,
+    '_deepseek_ai_dsh_client_ui_primitives',
+    `${INLINE}\nreturn { render: __ch4acko3DshTurnFoldRender, disclosure: __ch4acko3DshTurnFoldDisclosure, activityGroup: __ch4acko3DshTurnFoldActivityGroup, summary: __ch4acko3DshTurnFoldSummary, chevron: __ch4acko3DshTurnFoldChevron, settingsCard: __ch4acko3DshTurnFoldSettingsCard, metrics: __ch4acko3DshTurnFoldPlanMetrics, usage: __ch4acko3DshTurnFoldUsage, interactionKeys: __ch4acko3DshTurnFoldInteractionKeys, install: __ch4acko3DshTurnFoldInstall };`,
   )
-  const runtime = factory(react, jsxRuntime, ReasoningRow, formatDuration, compactTokens)
+  const runtime = factory(react, jsxRuntime, ReasoningRow, formatDuration, compactTokens, uiPrimitives)
   let locale = 'en'
   let registered
   let settings = { summaryFields: DEFAULT_SUMMARY_FIELDS }
@@ -326,8 +341,10 @@ function timelineFrom(turns) {
 function classify(out, api, ChatNodeSeat) {
   return out.map((element) => {
     if (element.type === api.disclosure) return { kind: 'disclosure', key: element.key, props: element.props }
+    if (element.type === api.activityGroup) return { kind: 'activity-group', key: element.key, props: element.props }
     if (element.type === api.summary) return { kind: 'summary', key: element.key, props: element.props }
     if (element.type === ChatNodeSeat) return { kind: 'seat', nodeKey: element.props.nodeKey }
+    if (element.props?.className === '__ch4acko3-dsh-turn-fold__activityText') return { kind: 'activity-text', child: element.props.children }
     if (element.props?.className === '__ch4acko3-dsh-turn-fold__closing') return { kind: 'closing', child: element.props.children }
     return { kind: 'other', type: element.type }
   })
@@ -346,6 +363,16 @@ function elementsWithClass(value, className, out = []) {
   } else if (value && typeof value === 'object') {
     if (value.props?.className === className) out.push(value)
     elementsWithClass(value.props?.children, className, out)
+  }
+  return out
+}
+
+function elementsOfType(value, type, out = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) elementsOfType(item, type, out)
+  } else if (value && typeof value === 'object') {
+    if (value.type === type) out.push(value)
+    elementsOfType(value.props?.children, type, out)
   }
   return out
 }
@@ -455,6 +482,146 @@ test('summary: a running turn shows a top bar before activity without hiding str
   deepEqual(elementsWithClass(header.props.children, '__ch4acko3-dsh-turn-fold__metricValue').map(elementText), ['1', '800', '120'])
   deepEqual(header.props.role, 'status')
   deepEqual(summary.props.children[1].props.className, '__ch4acko3-dsh-turn-fold__rule')
+})
+
+test('activity groups: one tool stays native and the second adjacent tool starts a closed group', () => {
+  const turn = turnLocation(4, 'open', Date.now() - 2000)
+  const oneTool = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
+  ]
+  const first = buildSandbox()
+  const single = classify(first.api.render({
+    order: oneTool.map((node) => node.key),
+    nodeStore: nodeStoreFrom(oneTool),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-tools',
+  }), first.api, first.ChatNodeSeat)
+  deepEqual(single.map((item) => item.kind), ['seat', 'summary', 'seat'])
+  deepEqual(single.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'tool-1'])
+
+  const twoTools = [...oneTool, { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { name: 'bash' } } }]
+  const second = buildSandbox()
+  const grouped = classify(second.api.render({
+    order: twoTools.map((node) => node.key),
+    nodeStore: nodeStoreFrom(twoTools),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-tools',
+  }), second.api, second.ChatNodeSeat)
+  deepEqual(grouped.map((item) => item.kind), ['seat', 'summary', 'activity-group'])
+  const group = grouped.find((item) => item.kind === 'activity-group')
+  deepEqual(group.props.toolKeys, ['tool-1', 'tool-2'])
+  deepEqual(group.props.reasoning, [])
+  deepEqual(group.props.toolCount, 2)
+  deepEqual(group.props.hasThink, false)
+  deepEqual(group.props.running, true)
+  deepEqual(group.props.failed, 0)
+  deepEqual(second.renderCalls, ['user'])
+})
+
+test('activity groups: any intervening Chat node breaks adjacency', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(5, 'open', Date.now() - 2000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
+    { key: 'context', kind: 'context', location: { kind: 'step', turn }, data: {} },
+    { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-tool-boundary',
+  }), api, ChatNodeSeat)
+  deepEqual(result.filter((item) => item.kind === 'activity-group').length, 0)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'tool-1', 'context', 'tool-2'])
+})
+
+test('activity groups: reasoning and its following tools share one closed group while prose stays outside', () => {
+  const { api, ChatNodeSeat, renderCalls } = buildSandbox()
+  const turn = turnLocation(8, 'open', Date.now() - 2000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'plan' }, { kind: 'text', text: 'checking' }, { kind: 'tool-call', callId: 'call-1' }, { kind: 'tool-call', callId: 'call-2' }] } },
+    { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
+    { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-mixed-activity',
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'activity-text', 'activity-group'])
+  const group = result[3]
+  deepEqual(group.props.reasoning, ['plan'])
+  deepEqual(group.props.toolKeys, ['tool-1', 'tool-2'])
+  deepEqual(group.props.toolCount, 2)
+  deepEqual(group.props.hasThink, true)
+  deepEqual(result[2].child.props.nodeKey, 'think')
+  deepEqual(renderCalls, ['user', 'think'])
+  deepEqual(api.activityGroup(group.props).props.children.props.title, 'Think · 2 tool calls')
+})
+
+test('activity groups: visible assistant prose is a hard boundary', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(9, 'open', Date.now() - 2000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'plan' }] } },
+    { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+    { key: 'status', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'prepare final response' }, { kind: 'text', text: 'still working' }] } },
+    { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-prose-boundary',
+  }), api, ChatNodeSeat)
+  const groups = result.filter((item) => item.kind === 'activity-group')
+  deepEqual(groups.length, 1)
+  deepEqual(groups[0].props.reasoning, ['plan'])
+  deepEqual(groups[0].props.toolKeys, ['tool-1'])
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'status', 'tool-2'])
+})
+
+test('activity groups: consecutive Think nodes without tools stay native', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(10, 'open', Date.now() - 2000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'think-1', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'one' }] } },
+    { key: 'think-2', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'two' }] } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-think-only',
+  }), api, ChatNodeSeat)
+  deepEqual(result.filter((item) => item.kind === 'activity-group').length, 0)
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'think-1', 'think-2'])
+})
+
+test('activity groups: failure count is visible without expanding', () => {
+  const { api, renderNode } = buildSandbox()
+  const group = api.activityGroup({
+    failed: 1,
+    foldKey: 'activity:session:1:tool-1',
+    hasThink: false,
+    reasoning: [],
+    renderNode,
+    running: false,
+    t: () => '',
+    toolCount: 2,
+    toolKeys: ['tool-1', 'tool-2'],
+  })
+  deepEqual(group.props['data-state'], 'error')
+  deepEqual(group.props['data-dsh-fold-scope'], 'activity-run')
+  deepEqual(group.props.children.props.title, '2 tool calls')
+  deepEqual(elementText(group.props.children.props.collapsedContent), '1 failed')
 })
 
 test('summary: native locale translation distinguishes completed, stopped, and interrupted turns in Chinese', () => {
@@ -638,8 +805,9 @@ test('summary: activity appended after the closing answer keeps the bar at the t
     timeline: timelineFrom([turn]),
     sessionId: 'session-background-tools',
   }), api, ChatNodeSeat)
-  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat', 'seat', 'seat', 'seat'])
-  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'answer', 'tail', 'tool-1', 'tool-2'])
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'seat', 'seat', 'activity-group'])
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'answer', 'tail'])
+  deepEqual(result.find((item) => item.kind === 'activity-group').props.toolKeys, ['tool-1', 'tool-2'])
 })
 
 test('fold: an unknown node after the closing answer also disables folding', () => {
@@ -837,7 +1005,10 @@ test('disclosure: accessible control, ownership, and open state survive remounts
     activity: ['think'],
     metrics: { durationMs: 84000, toolCalls: 1, inputTokens: 2000, outputTokens: 1400 },
     foldKey: 'session-persist:7',
+    nodeStore: nodeStoreFrom([{ key: 'think', kind: 'assistant-step', data: {} }]),
+    orderPositions: new Map([['think', 0]]),
     renderNode,
+    sessionId: 'session-persist',
     t: () => '1m 24s',
   }
   const closed = api.disclosure(props)
@@ -865,6 +1036,68 @@ test('disclosure: accessible control, ownership, and open state survive remounts
   deepEqual(reopened.props.children[2].props.inert, false)
 })
 
+test('disclosure: adjacent tools stay nested in a closed group when the turn opens', () => {
+  const { api, renderCalls } = buildSandbox()
+  const fixture = completedFixture()
+  fixture.nodes = fixture.nodes.filter((node) => node.key !== 'steering')
+  fixture.order = fixture.order.filter((key) => key !== 'steering')
+  const out = api.render({
+    order: fixture.order,
+    nodeStore: nodeStoreFrom(fixture.nodes),
+    timeline: timelineFrom([fixture.turn]),
+    sessionId: 'session-nested-tools',
+  })
+  const disclosureElement = out.find((element) => element.type === api.disclosure)
+  const closed = api.disclosure(disclosureElement.props)
+  closed.props.children[0].props.onClick()
+  const opened = api.disclosure(disclosureElement.props)
+  const groups = elementsOfType(opened, api.activityGroup)
+  deepEqual(groups.length, 1)
+  deepEqual(groups[0].props.toolKeys, ['tool-1', 'tool-2'])
+  deepEqual(renderCalls, ['user', 'answer', 'tail', 'think'])
+})
+
+test('activity groups: an opened reasoning-and-tool group stays open as more tools arrive', () => {
+  function Seat({ nodeKey }) {
+    return React.createElement('div', { 'data-seat': nodeKey })
+  }
+  const api = buildRuntime(React, reactJsxRuntime)
+  const baseProps = {
+    failed: 0,
+    foldKey: 'activity:session-growth:1:think-1',
+    hasThink: true,
+    reasoning: ['plan'],
+    renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+    running: true,
+    t: () => '',
+    toolCount: 1,
+    toolKeys: ['tool-1'],
+  }
+  let rendered
+  TestRenderer.act(() => {
+    rendered = TestRenderer.create(React.createElement(api.activityGroup, baseProps))
+  })
+  let button = rendered.root.findByType('button')
+  deepEqual(button.props['aria-expanded'], false)
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 0)
+
+  TestRenderer.act(() => button.props.onClick())
+  button = rendered.root.findByType('button')
+  deepEqual(button.props['aria-expanded'], true)
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 1)
+
+  TestRenderer.act(() => {
+    rendered.update(React.createElement(api.activityGroup, { ...baseProps, reasoning: ['plan', 'inspect result'], toolCount: 2, toolKeys: ['tool-1', 'tool-2'] }))
+  })
+  button = rendered.root.findByType('button')
+  deepEqual(button.props['aria-expanded'], true)
+  deepEqual(elementText(button.props.children), 'Think · 2 tool calls')
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-2' }).length, 1)
+  deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'inspect result' }).length, 1)
+
+  TestRenderer.act(() => rendered.unmount())
+})
+
 test('disclosure: real React state opens and closes the mounted body', () => {
   function Seat({ nodeKey }) {
     return React.createElement('div', { 'data-seat': nodeKey })
@@ -875,7 +1108,10 @@ test('disclosure: real React state opens and closes the mounted body', () => {
     closingReasoning: ['closing thought'],
     metrics: { durationMs: 84000, toolCalls: 1, inputTokens: 2000, outputTokens: 1400 },
     foldKey: 'session-react:1',
+    nodeStore: nodeStoreFrom([{ key: 'think', kind: 'assistant-step', data: {} }]),
+    orderPositions: new Map([['think', 0]]),
     renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+    sessionId: 'session-react',
     t: () => '1m 24s',
   }
   withGlobals({ matchMedia: () => ({ matches: true }) }, () => {

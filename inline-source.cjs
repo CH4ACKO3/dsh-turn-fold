@@ -35,6 +35,17 @@ var __ch4acko3DshTurnFoldCss = [
   ".__ch4acko3-dsh-turn-fold__body{display:flex;flex-direction:column;gap:16px;margin-top:12px}",
   ".__ch4acko3-dsh-turn-fold__closing{display:contents}",
   ".__ch4acko3-dsh-turn-fold__closing [data-variant=think]{display:none}",
+  ".__ch4acko3-dsh-turn-fold__activityText{display:contents}",
+  ".__ch4acko3-dsh-turn-fold__activityText [data-variant=think]{display:none}",
+  ".__ch4acko3-dsh-turn-fold-activity{min-width:0}",
+  ".__ch4acko3-dsh-turn-fold-activity__row{position:relative;overflow:hidden}",
+  ".__ch4acko3-dsh-turn-fold-activity[data-state=running] .__ch4acko3-dsh-turn-fold-activity__row:after{content:\"\";position:absolute;inset-block:0;left:-300px;width:300px;pointer-events:none;background:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--dsw-alias-bg-base) 60%,transparent) 55%,transparent 100%);animation:2.6s ease-out infinite __ch4acko3-dsh-turn-fold-activity-sweep}",
+  ".__ch4acko3-dsh-turn-fold-activity__leading{flex-shrink:0}",
+  ".__ch4acko3-dsh-turn-fold-activity__title{font-weight:400}",
+  ".__ch4acko3-dsh-turn-fold-activity__chevron{color:var(--dsw-alias-label-secondary)}",
+  ".__ch4acko3-dsh-turn-fold-activity__separator{width:2px;height:2px;margin:0 8px;flex:none;border-radius:1px;background:var(--dsw-alias-label-caption)}",
+  ".__ch4acko3-dsh-turn-fold-activity__failure{min-width:0;color:var(--dsw-alias-state-error-primary);font-size:14px;line-height:24px}",
+  ".__ch4acko3-dsh-turn-fold-activity__body{display:flex;flex-direction:column;gap:8px;margin:4px 0 4px 22px}",
   ".__ch4acko3-dsh-turn-fold-settings{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px}",
   ".__ch4acko3-dsh-turn-fold-settings__header{appearance:none;width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border:0;border-radius:12px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}",
   ".__ch4acko3-dsh-turn-fold-settings__header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}",
@@ -49,8 +60,9 @@ var __ch4acko3DshTurnFoldCss = [
   ".__ch4acko3-dsh-turn-fold-settings__readOnly{grid-column:1/-1;margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px}",
   "@keyframes __ch4acko3-dsh-turn-fold-enter{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}",
   "@keyframes __ch4acko3-dsh-turn-fold-metric-roll{from{opacity:.15;transform:translateY(65%)}to{opacity:1;transform:translateY(0)}}",
+  "@keyframes __ch4acko3-dsh-turn-fold-activity-sweep{0%{left:-300px}90%,to{left:100%}}",
   "@media(max-width:520px){.__ch4acko3-dsh-turn-fold__label{line-height:18px}.__ch4acko3-dsh-turn-fold-settings__body{grid-template-columns:1fr}}",
-  "@media(prefers-reduced-motion:reduce){.__ch4acko3-dsh-turn-fold,.__ch4acko3-dsh-turn-fold__metricValue{animation:none}.__ch4acko3-dsh-turn-fold__chevron,.__ch4acko3-dsh-turn-fold__clip,.__ch4acko3-dsh-turn-fold-settings__chevron{transition:none}}"
+  "@media(prefers-reduced-motion:reduce){.__ch4acko3-dsh-turn-fold,.__ch4acko3-dsh-turn-fold__metricValue,.__ch4acko3-dsh-turn-fold-activity[data-state=running] .__ch4acko3-dsh-turn-fold-activity__row:after{animation:none}.__ch4acko3-dsh-turn-fold__chevron,.__ch4acko3-dsh-turn-fold__clip,.__ch4acko3-dsh-turn-fold-settings__chevron{transition:none}}"
 ].join("");
 if (typeof document !== "undefined") {
   var __ch4acko3DshTurnFoldStyle = document.getElementById("ch4acko3-dsh-turn-fold-style");
@@ -132,7 +144,7 @@ function __ch4acko3DshTurnFoldUsage(usage) {
     reasoningTokens: reasoning
   };
 }
-function __ch4acko3DshTurnFoldClosingReasoning(node) {
+function __ch4acko3DshTurnFoldReasoningTexts(node) {
   var blocks = node !== void 0 && node.data !== void 0 ? node.data.blocks : void 0;
   if (!Array.isArray(blocks)) return [];
   return blocks.filter(function (block) {
@@ -173,6 +185,70 @@ function __ch4acko3DshTurnFoldChevron() {
       strokeWidth: 1.5,
       strokeLinecap: "round",
       strokeLinejoin: "round"
+    })
+  });
+}
+function __ch4acko3DshTurnFoldToolFacts(toolKeys, nodeStore) {
+  var failed = 0;
+  var running = false;
+  for (var i = 0; i < toolKeys.length; i++) {
+    var node = nodeStore.get(toolKeys[i]);
+    var root = node === void 0 || node.data === void 0 ? void 0 : node.data.root;
+    if (root !== void 0 && root.kind === "tool-result") {
+      if (root.isError === true) failed++;
+    } else {
+      running = true;
+    }
+  }
+  return { failed: failed, running: running };
+}
+function __ch4acko3DshTurnFoldActivityGroup(props) {
+  var foldKey = props.foldKey;
+  var initialOpen = __ch4acko3DshTurnFoldOpenKeys.has(foldKey);
+  var openState = react.useState(initialOpen);
+  var open = openState[0];
+  var setOpen = openState[1];
+  var titleKey = props.hasThink ? "activityGroup.thinkAndTools." : "activityGroup.tools.";
+  var title = __ch4acko3DshTurnFoldText(titleKey + (props.toolCount === 1 ? "one" : "many"), { count: props.toolCount });
+  var failure = props.failed === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.failures." + (props.failed === 1 ? "one" : "many"), { count: props.failed });
+  var state = props.running ? "running" : props.failed > 0 ? "error" : "ok";
+  function toggle() {
+    if (open) {
+      __ch4acko3DshTurnFoldOpenKeys.delete(foldKey);
+      setOpen(false);
+    } else {
+      __ch4acko3DshTurnFoldOpenKeys.add(foldKey);
+      setOpen(true);
+    }
+  }
+  return react_jsx_runtime.jsx("div", {
+    className: "__ch4acko3-dsh-turn-fold-activity",
+    "data-ch4acko3-dsh-turn-fold-activity": "",
+    "data-ch4acko3-dsh-turn-fold-activity-open": open ? "true" : "false",
+    "data-dsh-fold-owner": "@ch4acko3/dsh-turn-fold",
+    "data-dsh-fold-scope": "activity-run",
+    "data-state": state,
+    children: react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.DisclosureRow, {
+      rowClassName: "__ch4acko3-dsh-turn-fold-activity__row",
+      leadingClassName: "__ch4acko3-dsh-turn-fold-activity__leading",
+      titleClassName: "__ch4acko3-dsh-turn-fold-activity__title",
+      chevronClassName: "__ch4acko3-dsh-turn-fold-activity__chevron",
+      icon: props.failed > 0 ? react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "error" }) : react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.IconApiOutline14, { size: 14 }),
+      title: title,
+      open: open,
+      expandable: true,
+      expandOnRowClick: true,
+      onToggle: toggle,
+      collapsedContent: failure === null ? void 0 : react_jsx_runtime.jsxs(react_jsx_runtime.Fragment, { children: [
+        react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-activity__separator", "aria-hidden": true }),
+        react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-activity__failure", children: failure })
+      ] }),
+      children: open ? react_jsx_runtime.jsx("div", {
+        className: "__ch4acko3-dsh-turn-fold-activity__body",
+        children: props.reasoning.map(function (text, index) {
+          return react_jsx_runtime.jsx(ReasoningRow, { text: text, running: false, t: props.t }, "reasoning-" + String(index));
+        }).concat(props.toolKeys.map(function (key) { return props.renderNode(key); }))
+      }) : null
     })
   });
 }
@@ -352,6 +428,119 @@ function __ch4acko3DshTurnFoldSummary(props) {
     ]
   });
 }
+function __ch4acko3DshTurnFoldNodeTurn(node) {
+  var location = node === void 0 ? void 0 : node.location;
+  return location !== void 0 && (location.kind === "turn" || location.kind === "step") ? location.turn.turn : null;
+}
+function __ch4acko3DshTurnFoldHasVisibleNonReasoning(node) {
+  var blocks = node.data === void 0 ? void 0 : node.data.blocks;
+  if (!Array.isArray(blocks)) return false;
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i];
+    if (block === void 0 || block.kind === "reasoning" || block.kind === "tool-call") continue;
+    if (block.kind !== "text" || typeof block.text !== "string" || block.text.trim() !== "") return true;
+  }
+  return false;
+}
+function __ch4acko3DshTurnFoldHasToolCallBlock(node) {
+  var blocks = node.data === void 0 ? void 0 : node.data.blocks;
+  return Array.isArray(blocks) && blocks.some(function (block) { return block !== void 0 && block.kind === "tool-call"; });
+}
+function __ch4acko3DshTurnFoldRenderNativeEntry(entry, renderNode, hideReasoning) {
+  var rendered = renderNode(entry.key);
+  if (hideReasoning) rendered = react_jsx_runtime.jsx("div", {
+    className: "__ch4acko3-dsh-turn-fold__activityText",
+    children: rendered
+  }, "activity-text:" + String(entry.key));
+  return entry.closingKey === void 0 ? rendered : react_jsx_runtime.jsx("div", {
+    className: "__ch4acko3-dsh-turn-fold__closing",
+    children: rendered
+  }, entry.closingKey);
+}
+function __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sessionId, interactionKeys, t) {
+  var out = [];
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    if (entry.type === "element") {
+      out.push(entry.element);
+      continue;
+    }
+    var turn = __ch4acko3DshTurnFoldNodeTurn(entry.node);
+    var reasoning = entry.node.kind === "assistant-step" ? __ch4acko3DshTurnFoldReasoningTexts(entry.node) : [];
+    if (reasoning.length > 0 && (__ch4acko3DshTurnFoldHasToolCallBlock(entry.node) || !__ch4acko3DshTurnFoldHasVisibleNonReasoning(entry.node))) {
+      var reasoningTools = [];
+      var reasoningEnd = i + 1;
+      while (reasoningEnd < entries.length) {
+        var reasoningNext = entries[reasoningEnd];
+        if (reasoningNext.type !== "node" || reasoningNext.node.kind !== "tool-call" || reasoningNext.order !== entry.order + reasoningTools.length + 1 || __ch4acko3DshTurnFoldNodeTurn(reasoningNext.node) !== turn) break;
+        reasoningTools.push(reasoningNext);
+        reasoningEnd++;
+      }
+      var reasoningSelected = interactionKeys.has(entry.key) || reasoningTools.some(function (toolEntry) { return interactionKeys.has(toolEntry.key); });
+      if (turn !== null && reasoningTools.length > 0 && !reasoningSelected) {
+        if (__ch4acko3DshTurnFoldHasVisibleNonReasoning(entry.node)) out.push(__ch4acko3DshTurnFoldRenderNativeEntry(entry, renderNode, true));
+        var reasoningToolKeys = reasoningTools.map(function (toolEntry) { return toolEntry.key; });
+        var reasoningFacts = __ch4acko3DshTurnFoldToolFacts(reasoningToolKeys, nodeStore);
+        var reasoningFoldKey = "activity:" + String(sessionId) + ":" + String(turn) + ":" + String(entry.key);
+        out.push(react_jsx_runtime.jsx(__ch4acko3DshTurnFoldActivityGroup, {
+          failed: reasoningFacts.failed,
+          foldKey: reasoningFoldKey,
+          hasThink: true,
+          reasoning: reasoning,
+          renderNode: renderNode,
+          running: reasoningFacts.running,
+          t: t,
+          toolCount: reasoningToolKeys.length,
+          toolKeys: reasoningToolKeys
+        }, reasoningFoldKey));
+        i = reasoningEnd - 1;
+        continue;
+      }
+    }
+    if (entry.node.kind !== "tool-call") {
+      out.push(__ch4acko3DshTurnFoldRenderNativeEntry(entry, renderNode, false));
+      continue;
+    }
+    var toolEntries = [entry];
+    var j = i + 1;
+    while (j < entries.length) {
+      var next = entries[j];
+      if (next.type !== "node" || next.node.kind !== "tool-call" || next.order !== toolEntries[toolEntries.length - 1].order + 1 || __ch4acko3DshTurnFoldNodeTurn(next.node) !== turn) break;
+      toolEntries.push(next);
+      j++;
+    }
+    var selected = toolEntries.some(function (toolEntry) { return interactionKeys.has(toolEntry.key); });
+    if (turn === null || toolEntries.length < 2 || selected) {
+      for (var k = 0; k < toolEntries.length; k++) out.push(__ch4acko3DshTurnFoldRenderNativeEntry(toolEntries[k], renderNode, false));
+    } else {
+      var toolKeys = toolEntries.map(function (toolEntry) { return toolEntry.key; });
+      var facts = __ch4acko3DshTurnFoldToolFacts(toolKeys, nodeStore);
+      var foldKey = "activity:" + String(sessionId) + ":" + String(turn) + ":" + String(toolKeys[0]);
+      out.push(react_jsx_runtime.jsx(__ch4acko3DshTurnFoldActivityGroup, {
+        failed: facts.failed,
+        foldKey: foldKey,
+        hasThink: false,
+        reasoning: [],
+        renderNode: renderNode,
+        running: facts.running,
+        t: t,
+        toolCount: toolKeys.length,
+        toolKeys: toolKeys
+      }, foldKey));
+    }
+    i = j - 1;
+  }
+  return out;
+}
+function __ch4acko3DshTurnFoldRenderKeys(keys, orderPositions, nodeStore, renderNode, sessionId, t) {
+  var entries = [];
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var node = nodeStore.get(key);
+    if (node !== void 0) entries.push({ type: "node", key: key, node: node, order: orderPositions.get(key) });
+  }
+  return __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sessionId, new Set(), t);
+}
 function __ch4acko3DshTurnFoldDisclosure(props) {
   var activity = props.activity;
   var foldKey = props.foldKey;
@@ -432,7 +621,7 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
           children: react_jsx_runtime.jsxs("div", {
             className: "__ch4acko3-dsh-turn-fold__body",
             children: [
-              activity.map(function (key) { return renderNode(key); }),
+              __ch4acko3DshTurnFoldRenderKeys(activity, props.orderPositions, props.nodeStore, renderNode, props.sessionId, props.t),
               (props.closingReasoning || []).map(function (text, index) {
                 return react_jsx_runtime.jsx(ReasoningRow, { text: text, running: false, t: props.t }, "closing-reasoning-" + index);
               })
@@ -521,6 +710,7 @@ function __ch4acko3DshTurnFoldRender(props) {
   var timeline = props.timeline;
   var renderNode = props.renderNode;
   var sessionId = props.sessionId;
+  var orderPositions = new Map();
   var FOLD_KINDS = {
     "assistant-step": true,
     "context": true,
@@ -534,6 +724,7 @@ function __ch4acko3DshTurnFoldRender(props) {
   var i, key, node, loc, turnNum, plan;
   for (i = 0; i < order.length; i++) {
     key = order[i];
+    orderPositions.set(key, i);
     node = nodeStore.get(key);
     if (node === void 0) continue;
     loc = node.location;
@@ -566,7 +757,7 @@ function __ch4acko3DshTurnFoldRender(props) {
     if (plan.closingSeq !== void 0 && node.kind === "assistant-step" && node.data !== void 0 && node.data.finalNode !== void 0 && node.data.finalNode.seq === plan.closingSeq) {
       plan.closingKey = key;
       plan.closingOrder = i;
-      plan.closingReasoning = __ch4acko3DshTurnFoldClosingReasoning(node);
+      plan.closingReasoning = __ch4acko3DshTurnFoldReasoningTexts(node);
     }
   }
   for (i = 0; i < order.length; i++) {
@@ -583,7 +774,7 @@ function __ch4acko3DshTurnFoldRender(props) {
       plan.activity.push(key);
     }
   }
-  var out = [];
+  var entries = [];
   var interactionKeys = __ch4acko3DshTurnFoldInteractionKeys();
   for (i = 0; i < order.length; i++) {
     key = order[i];
@@ -596,32 +787,37 @@ function __ch4acko3DshTurnFoldRender(props) {
     if (foldable && FOLD_KINDS[node.kind] === true && key !== plan.closingKey) continue;
     var summaryAnchor = plan === void 0 ? void 0 : plan.closingKey !== void 0 && (plan.firstActivityOrder < 0 || plan.closingOrder < plan.firstActivityOrder) ? plan.closingKey : plan.activity[0];
     if (plan !== void 0 && !foldable && summaryAnchor !== void 0 && key === summaryAnchor) {
-      out.push(react_jsx_runtime.jsx(__ch4acko3DshTurnFoldSummary, {
+      entries.push({ type: "element", element: react_jsx_runtime.jsx(__ch4acko3DshTurnFoldSummary, {
         completed: plan.endReason === "completed",
         metrics: __ch4acko3DshTurnFoldPlanMetrics(plan, nodeStore, timeline),
         termination: plan.endReason === "aborted" || plan.endReason === "interrupted" ? plan.endReason : void 0,
         running: plan.status !== "closed",
         t: props.t
-      }, "ch4acko3-dsh-turn-fold-summary-" + String(sessionId) + "-" + plan.turn));
+      }, "ch4acko3-dsh-turn-fold-summary-" + String(sessionId) + "-" + plan.turn) });
     }
     if (foldable && key === plan.closingKey) {
-      out.push(react_jsx_runtime.jsx(__ch4acko3DshTurnFoldDisclosure, {
+      entries.push({ type: "element", element: react_jsx_runtime.jsx(__ch4acko3DshTurnFoldDisclosure, {
         activity: plan.activity,
         closingReasoning: plan.closingReasoning,
         completed: plan.endReason === "completed",
         metrics: __ch4acko3DshTurnFoldPlanMetrics(plan, nodeStore, timeline),
+        nodeStore: nodeStore,
+        orderPositions: orderPositions,
+        sessionId: sessionId,
         termination: plan.endReason === "aborted" || plan.endReason === "interrupted" ? plan.endReason : void 0,
         foldKey: String(sessionId) + ":" + plan.turn,
         renderNode: renderNode,
         t: props.t
-      }, "ch4acko3-dsh-turn-fold-" + String(sessionId) + "-" + plan.turn));
+      }, "ch4acko3-dsh-turn-fold-" + String(sessionId) + "-" + plan.turn) });
     }
-    var renderedNode = renderNode(key);
-    out.push(foldable && key === plan.closingKey && plan.closingReasoning.length > 0 ? react_jsx_runtime.jsx("div", {
-      className: "__ch4acko3-dsh-turn-fold__closing",
-      children: renderedNode
-    }, "ch4acko3-dsh-turn-fold-closing-" + String(sessionId) + "-" + plan.turn) : renderedNode);
+    entries.push({
+      type: "node",
+      key: key,
+      node: node,
+      order: i,
+      closingKey: foldable && key === plan.closingKey && plan.closingReasoning.length > 0 ? "ch4acko3-dsh-turn-fold-closing-" + String(sessionId) + "-" + plan.turn : void 0
+    });
   }
-  return out;
+  return __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sessionId, interactionKeys, props.t);
 }
 `;
