@@ -59,3 +59,25 @@ the final browser bundle, and covers completed, split-activity, post-closing,
 partial-history, failed, interrupted, open, accessibility, and state-retention
 behavior. A missing target or selector mismatch fails the test; it is never
 reported as a skipped pass.
+
+## CI and release
+
+GitHub Actions runs the test suite and a package dry run for every pull request
+and every push to `main`. Version tags publish to npm through Trusted Publishing
+(OIDC), without a long-lived npm token.
+
+Configure the npm trusted publisher once:
+
+```sh
+npx npm@^11.15.0 trust github @ch4acko3/dsh-turn-fold \
+  --repo ch4acko3/dsh-turn-fold \
+  --file release.yml \
+  --allow-publish
+```
+
+Then create and push a version tag whose value matches `package.json`:
+
+```sh
+npm version patch
+git push --follow-tags
+```

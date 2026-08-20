@@ -35,3 +35,25 @@ node test/run.cjs
 ```
 
 `npm install` 会安装仅用于测试的固定版本 DSH 对话包、TypeScript 和 TSQuery。测试套件会在内存中应用两个 Patch、解析最终浏览器包，并覆盖已完成回合、分段活动、结束后活动、部分历史、失败、中断、进行中、无障碍和状态保留等行为。目标缺失或选择器不匹配会使测试失败，不会被报告为跳过后通过。
+
+## CI 与发布
+
+GitHub Actions 会在每个 Pull Request 和每次推送到 `main` 时运行测试套件及
+包内容预检。版本标签通过 Trusted Publishing（OIDC）发布到 npm，无需保存
+长期 npm Token。
+
+首次使用时配置一次 npm 可信发布者：
+
+```sh
+npx npm@^11.15.0 trust github @ch4acko3/dsh-turn-fold \
+  --repo ch4acko3/dsh-turn-fold \
+  --file release.yml \
+  --allow-publish
+```
+
+之后创建与 `package.json` 版本一致的标签并推送：
+
+```sh
+npm version patch
+git push --follow-tags
+```
