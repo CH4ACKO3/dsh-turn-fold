@@ -88,8 +88,12 @@ test('provider: scoped package name matches the DSH bundle registration', () => 
 
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.version, '0.3.0')
-  deepEqual(MANIFEST.dependencies['@deepseek-ai/dsh-settings'], '0.1.0-rc.8')
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
+  deepEqual(MANIFEST.peerDependencies, {
+    '@deepseek-ai/dsh-client-ui-conversation': '0.1.0-rc.8',
+    '@deepseek-ai/dsh-settings': '0.1.0-rc.8',
+    'dsh-harmony': '^0.6.0',
+  })
   deepEqual(require(path.join(ROOT, 'index.cjs')).Config({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
   deepEqual(SUMMARY_FIELDS, [
     'duration',
