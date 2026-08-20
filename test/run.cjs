@@ -92,7 +92,7 @@ test('provider: native settings schema exposes every summary metric with the int
   deepEqual(MANIFEST.peerDependencies, {
     '@deepseek-ai/dsh-client-ui-conversation': '^0.1.0-rc.8',
     '@deepseek-ai/dsh-settings': '^0.1.0-rc.8',
-    'dsh-harmony': '^0.6.0',
+    'dsh-harmony': '^0.7.0',
   })
   deepEqual(require(path.join(ROOT, 'index.cjs')).Config({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
   deepEqual(SUMMARY_FIELDS, [
@@ -139,6 +139,8 @@ test('locale files: native zh and en dictionaries have the same non-empty key se
 test('provider: every Source Patch has an exact selector contract', () => {
   for (const patch of PATCHES) {
     deepEqual(patch.expect, 1, `${patch.id}: expect must stay exact`)
+    deepEqual(patch.target.file, 'lib/client.js', `${patch.id}: target must use the Harmony 0.7 file contract`)
+    deepEqual(patch.target.files, undefined, `${patch.id}: legacy target files must stay removed`)
     assert.ok(patch.target.version, `${patch.id}: target version must stay pinned`)
   }
 })
