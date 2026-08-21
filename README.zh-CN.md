@@ -14,18 +14,19 @@ https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 
 ## 工作原理
 
-两个固定目标的 Source Patch 会在内存中修改 `@deepseek-ai/dsh-client-ui-conversation` 的编译后浏览器包（`lib/client.js`），不会修改已安装的 DSH 文件。
+三个固定目标的 Source Patch 会在内存中修改 `@deepseek-ai/dsh-client-ui-conversation` 的编译后浏览器包（`lib/client.js`），不会修改已安装的 DSH 文件。
 
 | Patch | 选择器（预期命中 1 次） | 作用 |
 | --- | --- | --- |
 | `inject-turn-fold-runtime` | `FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])` | 向原生或已装饰的 `ChatView` 注入折叠渲染器和折叠 UI |
 | `rewrite-node-render-loop` | `CallExpression[expression.name.name="map"][expression.expression.name="order"]` | 将 `order.map(...)` 节点循环替换为按回合渲染器 |
+| `install-turn-fold-services` | `VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])` | 通过 DSH 原生语言服务注册内置的中英文词典，并绑定原生设置作用域 |
 
 ## 安装
 
 ```sh
 dsh plugin --profile web add github:CH4ACKO3/dsh-turn-fold
-dsh harmony status --profile web   # 两个 Patch 都必须为 `bound`
+dsh harmony status --profile web   # 三个 Patch 都必须为 `bound`
 ```
 
 ## 测试
@@ -34,7 +35,7 @@ dsh harmony status --profile web   # 两个 Patch 都必须为 `bound`
 node test/run.cjs
 ```
 
-`npm install` 会安装仅用于测试的固定版本 DSH 对话包、TypeScript 和 TSQuery。测试套件会在内存中应用两个 Patch、解析最终浏览器包，并覆盖已完成回合、分段活动、结束后活动、部分历史、失败、中断、进行中、无障碍和状态保留等行为。目标缺失或选择器不匹配会使测试失败，不会被报告为跳过后通过。
+`npm install` 会安装测试工具所需的依赖。测试套件会在内存中应用三个 Patch、解析最终浏览器包，并覆盖已完成回合、分段活动、结束后活动、部分历史、失败、中断、进行中、无障碍、本地化、设置和状态保留等行为。目标缺失或选择器不匹配会使测试失败，不会被报告为跳过后通过。
 
 ## CI 与发布
 

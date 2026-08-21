@@ -31,7 +31,7 @@ short open/close transition that unmounts the activity after it closes.
 
 ## How it works
 
-Two pinned Source Patches run in memory against the compiled browser bundle of
+Three pinned Source Patches run in memory against the compiled browser bundle of
 `@deepseek-ai/dsh-client-ui-conversation` (`lib/client.js`); installed DSH files
 are never modified.
 
@@ -39,12 +39,13 @@ are never modified.
 | --- | --- | --- |
 | `inject-turn-fold-runtime` | `FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])` | Injects the fold renderer + disclosure UI into either native or decorated `ChatView` |
 | `rewrite-node-render-loop` | `CallExpression[expression.name.name="map"][expression.expression.name="order"]` | Replaces the `order.map(...)` node loop with the per-turn renderer |
+| `install-turn-fold-services` | `VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])` | Registers the bundled English and Chinese dictionaries through DSH's native locale service and binds the native settings scope |
 
 ## Install
 
 ```sh
 dsh plugin --profile web add github:CH4ACKO3/dsh-turn-fold
-dsh harmony status --profile web   # both patches must be `bound`
+dsh harmony status --profile web   # all three patches must be `bound`
 ```
 
 ## Test
@@ -53,10 +54,10 @@ dsh harmony status --profile web   # both patches must be `bound`
 node test/run.cjs
 ```
 
-`npm install` installs test-only copies of the pinned DSH conversation package,
-TypeScript, and TSQuery. The test suite applies both patches in memory, parses
-the final browser bundle, and covers completed, split-activity, post-closing,
-partial-history, failed, interrupted, open, accessibility, and state-retention
+`npm install` installs the dependencies required by the test harness. The test
+suite applies all three patches in memory, parses the final browser bundle, and
+covers completed, split-activity, post-closing, partial-history, failed,
+interrupted, open, accessibility, localization, settings, and state-retention
 behavior. A missing target or selector mismatch fails the test; it is never
 reported as a skipped pass.
 

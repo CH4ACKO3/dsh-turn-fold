@@ -13,7 +13,7 @@
 //   3. install-turn-fold-services — registers the plugin's native DSH locale
 //      namespace and binds its native settings scope during conversation boot.
 //
-// Both selectors are pinned with an exact `expect: 1` and a target version so
+// All three selectors are pinned with an exact `expect: 1` and a target version so
 // a compiled-shape drift fails loudly in `dsh harmony status`.
 
 const INLINE = require('./inline-source.cjs')
