@@ -88,6 +88,14 @@ test('provider: scoped package name matches the DSH bundle registration', () => 
   assert.match(bundlePatch, /name: '@ch4acko3\/dsh-turn-fold'/)
 })
 
+test('release: npm publication gates an idempotent GitHub Release', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8')
+  assert.match(workflow, /publish:\n\s+permissions:\n\s+contents: read\n\s+id-token: write/)
+  assert.match(workflow, /github-release:\n\s+needs: publish\n\s+permissions:\n\s+contents: write/)
+  assert.match(workflow, /gh release view "\$GITHUB_REF_NAME" --repo "\$GITHUB_REPOSITORY"/)
+  assert.match(workflow, /gh release create "\$GITHUB_REF_NAME"[\s\S]*--verify-tag[\s\S]*--generate-notes/)
+})
+
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {

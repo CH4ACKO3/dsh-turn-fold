@@ -5,12 +5,13 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 jobs:
   publish:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -25,3 +26,23 @@ jobs:
       - run: npm run check
       - run: npm pack --dry-run
       - run: npm publish
+
+  github-release:
+    needs: publish
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release $GITHUB_REF_NAME already exists; nothing to do."
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --generate-notes \
+            --title "$GITHUB_REF_NAME"
