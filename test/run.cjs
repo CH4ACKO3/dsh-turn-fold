@@ -80,14 +80,15 @@ test('provider: scoped package name matches the DSH bundle registration', () => 
   deepEqual(MANIFEST.name, '@ch4acko3/dsh-turn-fold')
   deepEqual(MANIFEST.publishConfig, { access: 'public' })
   deepEqual(LOCKFILE.name, MANIFEST.name)
+  deepEqual(LOCKFILE.version, MANIFEST.version)
   deepEqual(LOCKFILE.packages[''].name, MANIFEST.name)
+  deepEqual(LOCKFILE.packages[''].version, MANIFEST.version)
   const bundlePatch = fs.readFileSync(path.join(ROOT, 'harmony.patch.yml'), 'utf8')
   assert.match(bundlePatch, /id: ch4acko3-dsh-turn-fold/)
   assert.match(bundlePatch, /name: '@ch4acko3\/dsh-turn-fold'/)
 })
 
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
-  deepEqual(MANIFEST.version, '0.3.0')
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {
     '@deepseek-ai/dsh-client-ui-conversation': '^0.1.0-rc.8',
