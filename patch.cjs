@@ -27,6 +27,7 @@ const TARGET = {
 module.exports = [
   {
     id: 'inject-turn-fold-runtime',
+    description: 'Provides the Turn Fold rendering, disclosure, metrics, settings, and locale runtime used by ChatView.',
     target: TARGET,
     select: 'FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])',
     expect: 1,
@@ -36,6 +37,7 @@ module.exports = [
   },
   {
     id: 'rewrite-node-render-loop',
+    description: 'Routes ChatView node rendering through Turn Fold while preserving the native node renderer.',
     target: TARGET,
     select: 'CallExpression[expression.name.name="map"][expression.expression.name="order"]',
     expect: 1,
@@ -52,6 +54,7 @@ module.exports = [
   },
   {
     id: 'install-turn-fold-services',
+    description: 'Registers Turn Fold locales and connects its settings when the conversation UI starts.',
     target: TARGET,
     select: 'VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])',
     expect: 1,

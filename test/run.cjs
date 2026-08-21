@@ -147,6 +147,7 @@ test('locale files: native zh and en dictionaries have the same non-empty key se
 
 test('provider: every Source Patch has an exact selector contract', () => {
   for (const patch of PATCHES) {
+    assert.ok(typeof patch.description === 'string' && patch.description.length > 0, `${patch.id}: description must explain the Patch`)
     deepEqual(patch.expect, 1, `${patch.id}: expect must stay exact`)
     deepEqual(patch.target.file, 'lib/client.js', `${patch.id}: target must use the Harmony 0.7 file contract`)
     deepEqual(patch.target.files, undefined, `${patch.id}: legacy target files must stay removed`)
