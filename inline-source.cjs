@@ -17,7 +17,7 @@ var __ch4acko3DshTurnFoldSettingsScope = null;
 var __ch4acko3DshTurnFoldSummaryFields = __ch4acko3DshTurnFoldDefaultFields.slice();
 var __ch4acko3DshTurnFoldSettingsListeners = new Set();
 var __ch4acko3DshTurnFoldCss = [
-  ".__ch4acko3-dsh-turn-fold{min-width:0;margin:1px 0 2px;animation:__ch4acko3-dsh-turn-fold-enter .18s cubic-bezier(.33,1,.68,1)}",
+  ".__ch4acko3-dsh-turn-fold{width:100%;min-width:0;max-width:100%;box-sizing:border-box;margin:1px 0 2px;animation:__ch4acko3-dsh-turn-fold-enter .18s cubic-bezier(.33,1,.68,1)}",
   ".__ch4acko3-dsh-turn-fold__header{display:block;width:100%;min-height:28px;box-sizing:border-box;margin:0;padding:3px 4px;color:var(--dsw-alias-label-secondary);text-align:left;font:var(--dsw-font-xs-13)}",
   "button.__ch4acko3-dsh-turn-fold__header{appearance:none;-webkit-tap-highlight-color:transparent;border:0;border-radius:0;background:transparent;cursor:pointer}",
   "button.__ch4acko3-dsh-turn-fold__header:focus-visible{outline:2px solid var(--dsw-static-deepseek-500);outline-offset:1px}",
@@ -29,43 +29,76 @@ var __ch4acko3DshTurnFoldCss = [
   ".__ch4acko3-dsh-turn-fold__rule{width:100%;height:1px;background:var(--dsw-alias-border-l3)}",
   ".__ch4acko3-dsh-turn-fold__chevron{display:inline-block;margin-left:5px;color:var(--dsw-alias-label-caption);vertical-align:-2px;transform:rotate(-90deg);transition:transform .16s cubic-bezier(.33,1,.68,1)}",
   ".__ch4acko3-dsh-turn-fold--open .__ch4acko3-dsh-turn-fold__chevron{transform:rotate(0deg)}",
-  ".__ch4acko3-dsh-turn-fold__clip{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .18s cubic-bezier(.33,1,.68,1),opacity .14s ease}",
+  ".__ch4acko3-dsh-turn-fold__clip{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:0fr;min-width:0;max-width:100%;opacity:0;transition:grid-template-rows .18s cubic-bezier(.33,1,.68,1),opacity .14s ease}",
   ".__ch4acko3-dsh-turn-fold--open .__ch4acko3-dsh-turn-fold__clip{grid-template-rows:1fr;opacity:1}",
-  ".__ch4acko3-dsh-turn-fold__bodyWrap{min-height:0;overflow:hidden}",
-  ".__ch4acko3-dsh-turn-fold__body{display:flex;flex-direction:column;gap:16px;margin-top:12px}",
+  ".__ch4acko3-dsh-turn-fold__bodyWrap{min-width:0;max-width:100%;min-height:0;overflow:hidden}",
+  ".__ch4acko3-dsh-turn-fold__bodyWrap--overflow-visible{overflow:visible}",
+  ".__ch4acko3-dsh-turn-fold__body{display:flex;min-width:0;max-width:100%;flex-direction:column;gap:16px;margin-top:12px}",
+  ".__ch4acko3-dsh-turn-fold__body>*{min-width:0;max-width:100%}",
   ".__ch4acko3-dsh-turn-fold__closing{display:contents}",
   ".__ch4acko3-dsh-turn-fold__closing [data-variant=think]{display:none}",
   ".__ch4acko3-dsh-turn-fold__activityText{display:contents}",
   ".__ch4acko3-dsh-turn-fold__activityText [data-variant=think]{display:none}",
-  ".__ch4acko3-dsh-turn-fold-activity{min-width:0}",
+  ".__ch4acko3-dsh-turn-fold-activity{width:100%;min-width:0;max-width:100%}",
   ".__ch4acko3-dsh-turn-fold-activity__row{position:relative;overflow:hidden}",
   ".__ch4acko3-dsh-turn-fold-activity[data-state=running] .__ch4acko3-dsh-turn-fold-activity__row:after{content:\"\";position:absolute;inset-block:0;left:-300px;width:300px;pointer-events:none;background:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--dsw-alias-bg-base) 60%,transparent) 55%,transparent 100%);animation:2.6s ease-out infinite __ch4acko3-dsh-turn-fold-activity-sweep}",
   ".__ch4acko3-dsh-turn-fold-activity__leading{flex-shrink:0}",
   ".__ch4acko3-dsh-turn-fold-activity__title{font-weight:400}",
   ".__ch4acko3-dsh-turn-fold-activity__chevron{color:var(--dsw-alias-label-secondary)}",
-  ".__ch4acko3-dsh-turn-fold-activity__separator{width:2px;height:2px;margin:0 8px;flex:none;border-radius:1px;background:var(--dsw-alias-label-caption)}",
+  ".__ch4acko3-dsh-turn-fold-activity__separator{display:inline-block;width:1px;height:10px;margin:0 7px;flex:none;background:var(--dsw-alias-border-l2);vertical-align:-1px}",
   ".__ch4acko3-dsh-turn-fold-activity__failure{min-width:0;color:var(--dsw-alias-state-error-primary);font-size:14px;line-height:24px}",
-  ".__ch4acko3-dsh-turn-fold-activity__clip{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .18s cubic-bezier(.16,1,.3,1),opacity .12s ease-out}",
+  ".__ch4acko3-dsh-turn-fold-activity__clip{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:0fr;min-width:0;max-width:100%;opacity:0;transition:grid-template-rows .18s cubic-bezier(.16,1,.3,1),opacity .12s ease-out}",
   ".__ch4acko3-dsh-turn-fold-activity--open .__ch4acko3-dsh-turn-fold-activity__clip{grid-template-rows:1fr;opacity:1}",
-  ".__ch4acko3-dsh-turn-fold-activity__bodyWrap{min-height:0;overflow:hidden}",
-  ".__ch4acko3-dsh-turn-fold-activity__body{display:flex;flex-direction:column;gap:8px;margin:4px 0 4px 22px}",
-  ".__ch4acko3-dsh-turn-fold-settings{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px}",
-  ".__ch4acko3-dsh-turn-fold-settings__header{appearance:none;width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border:0;border-radius:12px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}",
-  ".__ch4acko3-dsh-turn-fold-settings__header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}",
-  ".__ch4acko3-dsh-turn-fold-settings__headText{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}",
+  ".__ch4acko3-dsh-turn-fold-activity__bodyWrap{min-width:0;max-width:100%;min-height:0;overflow:hidden}",
+  ".__ch4acko3-dsh-turn-fold-activity__bodyWrap--overflow-visible{overflow:visible}",
+  ".__ch4acko3-dsh-turn-fold-activity__body{display:flex;min-width:0;max-width:100%;flex-direction:column;gap:8px;margin:4px 0 4px 22px}",
+  ".__ch4acko3-dsh-turn-fold-activity__body>*{min-width:0;max-width:100%}",
+  ".__ch4acko3-dsh-turn-fold-settings{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;transition:border-color .16s,background .16s}",
+  ".__ch4acko3-dsh-turn-fold-settings:hover{border-color:var(--dsw-alias-label-dimmed)}",
+  ".__ch4acko3-dsh-turn-fold-settings--open{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}",
+  ".__ch4acko3-dsh-turn-fold-settings__header{position:relative;display:flex;align-items:center;gap:12px;padding:14px 16px}",
+  ".__ch4acko3-dsh-turn-fold-settings__headerButton{appearance:none;position:absolute;inset:0;z-index:0;width:100%;border:0;border-radius:12px;background:transparent;color:inherit;font:inherit;cursor:pointer}",
+  ".__ch4acko3-dsh-turn-fold-settings__headerButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}",
+  ".__ch4acko3-dsh-turn-fold-settings__headText{position:relative;z-index:1;display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;pointer-events:none}",
+  ".__ch4acko3-dsh-turn-fold-settings__titleRow{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}",
   ".__ch4acko3-dsh-turn-fold-settings__title{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}",
+  ".__ch4acko3-dsh-turn-fold-settings__pluginName{max-width:100%;overflow:hidden;color:var(--dsw-alias-label-caption);font-size:12px;font-weight:400;line-height:18px;text-decoration:none;text-overflow:ellipsis;white-space:nowrap;opacity:.38;pointer-events:auto;transition:color .16s,opacity .16s}",
+  ".__ch4acko3-dsh-turn-fold-settings__pluginName:hover{color:var(--dsw-alias-label-secondary);opacity:.72}",
+  ".__ch4acko3-dsh-turn-fold-settings__pluginName[data-ready=true],.__ch4acko3-dsh-turn-fold-settings__pluginName:focus-visible{color:var(--dsw-alias-state-business-primary);opacity:1}",
+  ".__ch4acko3-dsh-turn-fold-settings__pluginName:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:2px}",
   ".__ch4acko3-dsh-turn-fold-settings__description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}",
-  ".__ch4acko3-dsh-turn-fold-settings__chevron{flex:none;transform:rotate(-90deg);transition:transform .16s}",
-  ".__ch4acko3-dsh-turn-fold-settings--open .__ch4acko3-dsh-turn-fold-settings__chevron{transform:rotate(0deg)}",
-  ".__ch4acko3-dsh-turn-fold-settings__body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;margin:0 16px;padding:12px 0 14px;border-top:1px solid var(--dsw-alias-border-l2)}",
-  ".__ch4acko3-dsh-turn-fold-settings__field{display:flex;align-items:center;gap:8px;min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}",
-  ".__ch4acko3-dsh-turn-fold-settings__field input{accent-color:var(--dsw-alias-brand-primary)}",
-  ".__ch4acko3-dsh-turn-fold-settings__readOnly{grid-column:1/-1;margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px}",
+  ".__ch4acko3-dsh-turn-fold-settings__chevron{position:relative;z-index:1;color:var(--dsw-alias-label-tertiary);flex:none;pointer-events:none;transition:transform .16s}",
+  ".__ch4acko3-dsh-turn-fold-settings--open .__ch4acko3-dsh-turn-fold-settings__chevron{transform:rotate(180deg)}",
+  ".__ch4acko3-dsh-turn-fold-settings__body{display:flex;flex-direction:column;gap:10px;margin:0 16px;padding:12px 0 14px;border-top:1px solid var(--dsw-alias-border-l2)}",
+  ".__ch4acko3-dsh-turn-fold-settings__metricEditor{display:flex;flex-direction:column;gap:10px}",
+  ".__ch4acko3-dsh-turn-fold-settings__zone{display:flex;flex-direction:column;gap:6px}",
+  ".__ch4acko3-dsh-turn-fold-settings__zoneLabel{color:var(--dsw-alias-label-primary);font-size:12px;font-weight:500;line-height:18px}",
+  ".__ch4acko3-dsh-turn-fold-settings__slot{display:flex;align-items:center;align-content:center;flex-wrap:wrap;gap:7px;min-height:44px;box-sizing:border-box;padding:7px;border:1px dashed var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-3);transition:border-color .16s,background .16s}",
+  ".__ch4acko3-dsh-turn-fold-settings__slot[data-empty=true]{justify-content:center}",
+  ".__ch4acko3-dsh-turn-fold-settings__slot[data-drop-active=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-base)}",
+  ".__ch4acko3-dsh-turn-fold-settings__palette{display:flex;align-items:center;align-content:center;flex-wrap:wrap;gap:7px;min-height:44px;box-sizing:border-box;padding:7px;border:1px dashed var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-3)}",
+  ".__ch4acko3-dsh-turn-fold-settings__palette[data-empty=true]{justify-content:center}",
+  ".__ch4acko3-dsh-turn-fold-settings__palette[data-drop-active=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-base)}",
+  ".__ch4acko3-dsh-turn-fold-settings__tag{appearance:none;max-width:100%;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;padding:4px 10px;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;text-overflow:ellipsis;white-space:nowrap;cursor:grab;user-select:none;touch-action:none;transition:border-color .16s,color .16s,background .16s,opacity .16s}",
+  ".__ch4acko3-dsh-turn-fold-settings__tag[data-selected=true]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-primary)}",
+  ".__ch4acko3-dsh-turn-fold-settings__tag:hover:not(:disabled){border-color:var(--dsw-alias-label-dimmed);color:var(--dsw-alias-label-primary)}",
+  ".__ch4acko3-dsh-turn-fold-settings__tag:active:not(:disabled){cursor:grabbing}",
+  ".__ch4acko3-dsh-turn-fold-settings__tag:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}",
+  ".__ch4acko3-dsh-turn-fold-settings__tag:disabled{cursor:default;opacity:.45}",
+  ".__ch4acko3-dsh-turn-fold-settings__dropSlot{display:flex;align-items:center;justify-content:center;width:7px;height:28px;flex:none;pointer-events:none}",
+  ".__ch4acko3-dsh-turn-fold-settings__dropSlot:before{content:\"\";width:2px;height:22px;border-radius:2px;background:#3b82f6;box-shadow:0 0 4px #3b82f6,0 0 9px color-mix(in srgb,#3b82f6 65%,transparent)}",
+  ".__ch4acko3-dsh-turn-fold-settings__dragPreview{position:fixed;z-index:1400;pointer-events:none;filter:drop-shadow(0 8px 14px rgba(0,0,0,.16))}",
+  ".__ch4acko3-dsh-turn-fold-settings__dragPreview .__ch4acko3-dsh-turn-fold-settings__tag{display:block;box-sizing:border-box;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}",
+  ".__ch4acko3-dsh-turn-fold-settings__empty{margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;pointer-events:none}",
+  ".__ch4acko3-dsh-turn-fold-settings__hint{margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}",
+  ".__ch4acko3-dsh-turn-fold-settings__readOnly{margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px}",
   "@keyframes __ch4acko3-dsh-turn-fold-enter{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}",
   "@keyframes __ch4acko3-dsh-turn-fold-metric-roll{from{opacity:.15;transform:translateY(65%)}to{opacity:1;transform:translateY(0)}}",
   "@keyframes __ch4acko3-dsh-turn-fold-activity-sweep{0%{left:-300px}90%,to{left:100%}}",
-  "@media(max-width:520px){.__ch4acko3-dsh-turn-fold__label{line-height:18px}.__ch4acko3-dsh-turn-fold-settings__body{grid-template-columns:1fr}}",
-  "@media(prefers-reduced-motion:reduce){.__ch4acko3-dsh-turn-fold,.__ch4acko3-dsh-turn-fold__metricValue,.__ch4acko3-dsh-turn-fold-activity[data-state=running] .__ch4acko3-dsh-turn-fold-activity__row:after{animation:none}.__ch4acko3-dsh-turn-fold__chevron,.__ch4acko3-dsh-turn-fold__clip,.__ch4acko3-dsh-turn-fold-activity__clip,.__ch4acko3-dsh-turn-fold-settings__chevron{transition:none}}"
+  "@keyframes __ch4acko3-dsh-turn-fold-settings-drop-in{from{opacity:0;transform:scaleY(.45)}to{opacity:1;transform:scaleY(1)}}",
+  "@media(max-width:520px){.__ch4acko3-dsh-turn-fold__label{line-height:18px}}",
+  "@media(prefers-reduced-motion:no-preference){.__ch4acko3-dsh-turn-fold-settings__dropSlot{animation:__ch4acko3-dsh-turn-fold-settings-drop-in .13s cubic-bezier(.16,1,.3,1)}}",
+  "@media(prefers-reduced-motion:reduce){.__ch4acko3-dsh-turn-fold,.__ch4acko3-dsh-turn-fold__metricValue,.__ch4acko3-dsh-turn-fold-activity[data-state=running] .__ch4acko3-dsh-turn-fold-activity__row:after{animation:none}.__ch4acko3-dsh-turn-fold__chevron,.__ch4acko3-dsh-turn-fold__clip,.__ch4acko3-dsh-turn-fold-activity__clip,.__ch4acko3-dsh-turn-fold-settings,.__ch4acko3-dsh-turn-fold-settings__pluginName,.__ch4acko3-dsh-turn-fold-settings__chevron,.__ch4acko3-dsh-turn-fold-settings__slot,.__ch4acko3-dsh-turn-fold-settings__tag{transition:none}}"
 ].join("");
 if (typeof document !== "undefined") {
   var __ch4acko3DshTurnFoldStyle = document.getElementById("ch4acko3-dsh-turn-fold-style");
@@ -208,10 +241,10 @@ function __ch4acko3DshTurnFoldToolFacts(toolKeys, nodeStore) {
 function __ch4acko3DshTurnFoldActivityGroup(props) {
   var foldKey = props.foldKey;
   var toolCount = 0;
-  var hasThink = false;
+  var reasoningCount = 0;
   for (var itemIndex = 0; itemIndex < props.items.length; itemIndex++) {
     if (props.items[itemIndex].kind === "tool") toolCount++;
-    else hasThink = true;
+    else reasoningCount++;
   }
   var initialOpen = __ch4acko3DshTurnFoldOpenKeys.has(foldKey);
   var openState = react.useState(initialOpen);
@@ -220,6 +253,9 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
   var renderedState = react.useState(initialOpen);
   var bodyRendered = renderedState[0];
   var setBodyRendered = renderedState[1];
+  var overflowState = react.useState(initialOpen);
+  var overflowVisible = overflowState[0];
+  var setOverflowVisible = overflowState[1];
   var frameRef = react.useRef(null);
   var timerRef = react.useRef(null);
   react.useEffect(function () {
@@ -228,9 +264,13 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
     };
   }, []);
-  var title = hasThink && toolCount === 0
-    ? __ch4acko3DshTurnFoldText("activityGroup.think")
-    : __ch4acko3DshTurnFoldText((hasThink ? "activityGroup.thinkAndTools." : "activityGroup.tools.") + (toolCount === 1 ? "one" : "many"), { count: toolCount });
+  var reasoningTitle = reasoningCount === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.reasoning." + (reasoningCount === 1 ? "one" : "many"), { count: reasoningCount });
+  var toolTitle = toolCount === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.tools." + (toolCount === 1 ? "one" : "many"), { count: toolCount });
+  var title = reasoningTitle === null ? toolTitle : toolTitle === null ? reasoningTitle : react_jsx_runtime.jsxs(react_jsx_runtime.Fragment, { children: [
+    reasoningTitle,
+    react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-activity__separator", "aria-hidden": true }),
+    toolTitle
+  ] });
   var failure = props.failed === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.failures." + (props.failed === 1 ? "one" : "many"), { count: props.failed });
   var state = props.running ? "running" : props.failed > 0 ? "error" : "ok";
   function toggle() {
@@ -240,6 +280,7 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
     timerRef.current = null;
     if (open) {
       __ch4acko3DshTurnFoldOpenKeys.delete(foldKey);
+      setOverflowVisible(false);
       setOpen(false);
       var delay = __ch4acko3DshTurnFoldMotionMs();
       if (delay === 0) setBodyRendered(false);
@@ -251,13 +292,19 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
     }
     __ch4acko3DshTurnFoldOpenKeys.add(foldKey);
     setBodyRendered(true);
-    if (__ch4acko3DshTurnFoldMotionMs() === 0 || typeof requestAnimationFrame !== "function") {
+    var delay = __ch4acko3DshTurnFoldMotionMs();
+    if (delay === 0 || typeof requestAnimationFrame !== "function") {
       setOpen(true);
+      setOverflowVisible(true);
       return;
     }
     frameRef.current = requestAnimationFrame(function () {
       frameRef.current = null;
       setOpen(true);
+      timerRef.current = setTimeout(function () {
+        timerRef.current = null;
+        setOverflowVisible(true);
+      }, delay);
     });
   }
   return react_jsx_runtime.jsxs("div", {
@@ -289,7 +336,7 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
         "aria-hidden": !open,
         inert: !open,
         children: bodyRendered ? react_jsx_runtime.jsx("div", {
-          className: "__ch4acko3-dsh-turn-fold-activity__bodyWrap",
+          className: "__ch4acko3-dsh-turn-fold-activity__bodyWrap" + (overflowVisible ? " __ch4acko3-dsh-turn-fold-activity__bodyWrap--overflow-visible" : ""),
           children: react_jsx_runtime.jsx("div", {
             className: "__ch4acko3-dsh-turn-fold-activity__body",
             children: props.items.map(function (item) {
@@ -303,6 +350,38 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
     ]
   });
 }
+function __ch4acko3DshTurnFoldInsertionIndex(bounds, clientX, clientY) {
+  if (bounds.length === 0) return 0;
+  clientY = Math.max(bounds[0].top, Math.min(clientY, bounds[bounds.length - 1].bottom));
+  var rows = [];
+  for (var boundIndex = 0; boundIndex < bounds.length; boundIndex++) {
+    var bound = bounds[boundIndex];
+    var row = rows[rows.length - 1];
+    if (!row || Math.abs(bound.top - row.top) > 4) {
+      row = { start: boundIndex, end: boundIndex + 1, top: bound.top, bottom: bound.bottom };
+      rows.push(row);
+    } else {
+      row.end = boundIndex + 1;
+      row.bottom = Math.max(row.bottom, bound.bottom);
+    }
+  }
+  for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    var candidate = rows[rowIndex];
+    if (clientY < candidate.top) return candidate.start;
+    if (clientY <= candidate.bottom) {
+      for (var itemIndex = candidate.start; itemIndex < candidate.end; itemIndex++) {
+        var item = bounds[itemIndex];
+        if (clientX < item.left + item.width / 2) return itemIndex;
+      }
+      return candidate.end;
+    }
+  }
+  return bounds.length;
+}
+function __ch4acko3DshTurnFoldDropDestination(dividerY, clientY) {
+  return clientY <= dividerY ? "selected" : "available";
+}
+var __ch4acko3DshTurnFoldOwnerLinkDelay = 300;
 function __ch4acko3DshTurnFoldSettingsCard() {
   var openState = react.useState(false);
   var open = openState[0];
@@ -313,17 +392,74 @@ function __ch4acko3DshTurnFoldSettingsCard() {
   var failedState = react.useState(false);
   var failed = failedState[0];
   var setFailed = failedState[1];
+  var dragViewState = react.useState(null);
+  var dragView = dragViewState[0];
+  var setDragView = dragViewState[1];
+  var drag = react.useRef(null);
+  var selectedSlotRef = react.useRef(null);
+  var paletteRef = react.useRef(null);
+  var selectedTagRefs = react.useRef(new Map());
+  var moveDragRef = react.useRef(null);
+  var finishDragRef = react.useRef(null);
+  var suppressClick = react.useRef(false);
+  var ownerHoverStartedAt = react.useRef(null);
+  var ownerReadyTimer = react.useRef(null);
+  var ownerLinkReadyState = react.useState(false);
+  var ownerLinkReady = ownerLinkReadyState[0];
+  var setOwnerLinkReady = ownerLinkReadyState[1];
+  react.useEffect(function () {
+    if (typeof window === "undefined") return;
+    function move(event) { if (moveDragRef.current) moveDragRef.current(event); }
+    function finish(event) { if (finishDragRef.current) finishDragRef.current(event); }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish, true);
+    window.addEventListener("pointercancel", finish, true);
+    return function () {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish, true);
+      window.removeEventListener("pointercancel", finish, true);
+    };
+  }, []);
+  react.useEffect(function () {
+    return function () {
+      if (ownerReadyTimer.current !== null) clearTimeout(ownerReadyTimer.current);
+    };
+  }, []);
   var scope = __ch4acko3DshTurnFoldSettingsScope;
   if (scope === null) return null;
   var snapshot = react.useSyncExternalStore(function (listener) { return scope.subscribe(listener); }, function () { return scope.getSnapshot(); }, function () { return scope.getSnapshot(); });
   if (snapshot.status !== "ready" || snapshot.value === void 0) return null;
   var fields = snapshot.value.summaryFields;
+  var availableFields = __ch4acko3DshTurnFoldKnownFields.filter(function (field) { return fields.indexOf(field) < 0; });
   var title = __ch4acko3DshTurnFoldText("settings.title");
-  function toggleField(field, checked) {
+  function toggleOpen() {
+    setOpen(function (current) { return !current; });
+  }
+  function beginOwnerHover() {
+    if (ownerReadyTimer.current !== null) clearTimeout(ownerReadyTimer.current);
+    ownerHoverStartedAt.current = Date.now();
+    setOwnerLinkReady(false);
+    ownerReadyTimer.current = setTimeout(function () {
+      ownerReadyTimer.current = null;
+      setOwnerLinkReady(true);
+    }, __ch4acko3DshTurnFoldOwnerLinkDelay);
+  }
+  function endOwnerHover() {
+    if (ownerReadyTimer.current !== null) clearTimeout(ownerReadyTimer.current);
+    ownerReadyTimer.current = null;
+    ownerHoverStartedAt.current = null;
+    setOwnerLinkReady(false);
+  }
+  function activateOwnerLink(event) {
+    if (event.detail === 0) return;
+    var startedAt = ownerHoverStartedAt.current;
+    if (ownerLinkReady || typeof startedAt === "number" && Date.now() - startedAt >= __ch4acko3DshTurnFoldOwnerLinkDelay) return;
+    event.preventDefault();
+    toggleOpen();
+  }
+  function saveFields(next) {
     if (!snapshot.writable || pending) return;
-    var next = __ch4acko3DshTurnFoldKnownFields.filter(function (candidate) {
-      return candidate === field ? checked : fields.indexOf(candidate) >= 0;
-    });
+    if (next.length === fields.length && next.every(function (field, index) { return field === fields[index]; })) return;
     setPending(true);
     setFailed(false);
     scope.set("summaryFields", next).then(function () {
@@ -333,25 +469,169 @@ function __ch4acko3DshTurnFoldSettingsCard() {
       setFailed(true);
     });
   }
+  function addField(field) {
+    if (__ch4acko3DshTurnFoldKnownFields.indexOf(field) < 0 || fields.indexOf(field) >= 0) return;
+    saveFields(fields.concat(field));
+  }
+  function removeField(field) {
+    saveFields(fields.filter(function (candidate) { return candidate !== field; }));
+  }
+  function placeFieldAt(field, index) {
+    if (__ch4acko3DshTurnFoldKnownFields.indexOf(field) < 0) return;
+    var next = fields.filter(function (candidate) { return candidate !== field; });
+    next.splice(Math.max(0, Math.min(index, next.length)), 0, field);
+    saveFields(next);
+  }
+  function projectDrag(clientX, clientY, field) {
+    var selectedSlot = selectedSlotRef.current;
+    var palette = paletteRef.current;
+    if (!selectedSlot || !palette) return { destination: null, index: 0 };
+    var selectedBounds = selectedSlot.getBoundingClientRect();
+    var paletteBounds = palette.getBoundingClientRect();
+    var destination = __ch4acko3DshTurnFoldDropDestination((selectedBounds.bottom + paletteBounds.top) / 2, clientY);
+    if (destination === "selected") {
+      var remaining = fields.filter(function (candidate) { return candidate !== field; });
+      var bounds = remaining.map(function (candidate) {
+        var element = selectedTagRefs.current.get(candidate);
+        return element ? element.getBoundingClientRect() : null;
+      }).filter(function (value) { return value !== null; });
+      return { destination: "selected", index: __ch4acko3DshTurnFoldInsertionIndex(bounds, clientX, clientY) };
+    }
+    if (destination === "available") return { destination: "available", index: 0 };
+    return { destination: null, index: 0 };
+  }
+  function beginPointerDrag(event, field) {
+    if (event.button !== 0 || !snapshot.writable || pending) return;
+    var bounds = event.currentTarget.getBoundingClientRect();
+    drag.current = {
+      field: field,
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      moved: false,
+      selected: fields.indexOf(field) >= 0,
+      width: bounds.width,
+      offsetX: event.clientX - bounds.left,
+      offsetY: event.clientY - bounds.top
+    };
+  }
+  function movePointerDrag(event) {
+    var active = drag.current;
+    if (!active || active.pointerId !== event.pointerId || pending) return;
+    active.lastX = event.clientX;
+    active.lastY = event.clientY;
+    if (!active.moved && Math.hypot(event.clientX - active.originX, event.clientY - active.originY) < 8) return;
+    active.moved = true;
+    event.preventDefault();
+    var projection = projectDrag(event.clientX, event.clientY, active.field);
+    setDragView({
+      field: active.field,
+      selected: active.selected,
+      x: event.clientX,
+      y: event.clientY,
+      width: active.width,
+      offsetX: active.offsetX,
+      offsetY: active.offsetY,
+      destination: projection.destination,
+      index: projection.index
+    });
+  }
+  function finishPointerDrag(event) {
+    var active = drag.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    drag.current = null;
+    if (!active.moved) return;
+    event.preventDefault();
+    var projection = projectDrag(event.clientX, event.clientY, active.field);
+    setDragView(null);
+    if (projection.destination === "selected") placeFieldAt(active.field, projection.index);
+    else if (projection.destination === "available" && active.selected) removeField(active.field);
+    suppressClick.current = true;
+    if (typeof window === "undefined") suppressClick.current = false;
+    else window.setTimeout(function () { suppressClick.current = false; }, 0);
+  }
+  moveDragRef.current = movePointerDrag;
+  finishDragRef.current = finishPointerDrag;
+  function renderTag(field, selected) {
+    var label = __ch4acko3DshTurnFoldText("settings." + field);
+    return react_jsx_runtime.jsx("button", {
+      ref: selected ? function (element) {
+        if (element === null) selectedTagRefs.current.delete(field);
+        else selectedTagRefs.current.set(field, element);
+      } : void 0,
+      type: "button",
+      className: "__ch4acko3-dsh-turn-fold-settings__tag",
+      "data-field": field,
+      "data-selected": selected ? "true" : "false",
+      disabled: !snapshot.writable || pending,
+      "aria-label": __ch4acko3DshTurnFoldText(selected ? "settings.removeMetric" : "settings.addMetric", { label: label }),
+      onClick: function () {
+        if (suppressClick.current) return;
+        if (selected) removeField(field);
+        else addField(field);
+      },
+      onPointerDown: function (event) { beginPointerDrag(event, field); },
+      onKeyDown: selected ? function (event) {
+        if (!event.altKey || event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        var index = fields.indexOf(field);
+        var target = event.key === "ArrowLeft" ? Math.max(0, index - 1) : Math.min(fields.length - 1, index + 1);
+        if (target !== index) placeFieldAt(field, event.key === "ArrowLeft" ? target : target + 1);
+      } : void 0,
+      children: label
+    }, field);
+  }
+  var movingField = dragView === null ? null : dragView.field;
+  var visibleSelected = fields.filter(function (field) { return field !== movingField; });
+  var selectedChildren = [];
+  for (var selectedIndex = 0; selectedIndex <= visibleSelected.length; selectedIndex++) {
+    if (dragView !== null && dragView.destination === "selected" && dragView.index === selectedIndex) {
+      selectedChildren.push(react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__dropSlot", "aria-hidden": true }, "drop-" + selectedIndex));
+    }
+    if (selectedIndex < visibleSelected.length) selectedChildren.push(renderTag(visibleSelected[selectedIndex], true));
+  }
+  if (selectedChildren.length === 0) selectedChildren.push(react_jsx_runtime.jsx("p", { className: "__ch4acko3-dsh-turn-fold-settings__empty", children: __ch4acko3DshTurnFoldText("settings.emptySelection") }, "empty"));
+  var visibleAvailable = availableFields.filter(function (field) { return field !== movingField; });
   return react_jsx_runtime.jsxs("li", {
     className: "__ch4acko3-dsh-turn-fold-settings" + (open ? " __ch4acko3-dsh-turn-fold-settings--open" : ""),
     "data-ch4acko3-dsh-turn-fold-settings": "",
     children: [
-      react_jsx_runtime.jsxs("button", {
-        type: "button",
+      react_jsx_runtime.jsxs("div", {
         className: "__ch4acko3-dsh-turn-fold-settings__header",
-        "aria-expanded": open,
-        "aria-label": __ch4acko3DshTurnFoldText(open ? "settings.collapse" : "settings.expand", { title: title }),
-        onClick: function () { setOpen(!open); },
         children: [
+          react_jsx_runtime.jsx("button", {
+            type: "button",
+            className: "__ch4acko3-dsh-turn-fold-settings__headerButton",
+            "aria-expanded": open,
+            "aria-label": __ch4acko3DshTurnFoldText(open ? "settings.collapse" : "settings.expand", { title: title }),
+            onClick: toggleOpen
+          }),
           react_jsx_runtime.jsxs("span", {
             className: "__ch4acko3-dsh-turn-fold-settings__headText",
             children: [
-              react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__title", children: title }),
+              react_jsx_runtime.jsxs("span", {
+                className: "__ch4acko3-dsh-turn-fold-settings__titleRow",
+                children: [
+                  react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__title", children: title }),
+                  react_jsx_runtime.jsx("a", {
+                    className: "__ch4acko3-dsh-turn-fold-settings__pluginName",
+                    href: "https://github.com/CH4ACKO3/dsh-turn-fold",
+                    target: "_blank",
+                    rel: "noreferrer",
+                    "data-ready": ownerLinkReady ? "true" : "false",
+                    onPointerEnter: beginOwnerHover,
+                    onPointerLeave: endOwnerHover,
+                    onClick: activateOwnerLink,
+                    children: "@ch4acko3/dsh-turn-fold"
+                  })
+                ]
+              }),
               react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__description", children: __ch4acko3DshTurnFoldText("settings.description") })
             ]
           }),
-          react_jsx_runtime.jsx(__ch4acko3DshTurnFoldChevron, {})
+          react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: "__ch4acko3-dsh-turn-fold-settings__chevron" })
         ]
       }),
       open ? react_jsx_runtime.jsxs("div", {
@@ -359,19 +639,56 @@ function __ch4acko3DshTurnFoldSettingsCard() {
         children: [
           !snapshot.writable ? react_jsx_runtime.jsx("p", { className: "__ch4acko3-dsh-turn-fold-settings__readOnly", role: "status", children: __ch4acko3DshTurnFoldText("settings.readOnly") }) : null,
           failed ? react_jsx_runtime.jsx("p", { className: "__ch4acko3-dsh-turn-fold-settings__readOnly", role: "alert", children: __ch4acko3DshTurnFoldText("settings.writeFailed") }) : null,
-          __ch4acko3DshTurnFoldKnownFields.map(function (field) {
-            return react_jsx_runtime.jsxs("label", {
-              className: "__ch4acko3-dsh-turn-fold-settings__field",
-              children: [
-                react_jsx_runtime.jsx("input", {
-                  type: "checkbox",
-                  checked: fields.indexOf(field) >= 0,
-                  disabled: !snapshot.writable || pending,
-                  onChange: function (event) { toggleField(field, event.currentTarget.checked); }
-                }),
-                react_jsx_runtime.jsx("span", { children: __ch4acko3DshTurnFoldText("settings." + field) })
-              ]
-            }, field);
+          react_jsx_runtime.jsxs("div", {
+            className: "__ch4acko3-dsh-turn-fold-settings__metricEditor",
+            children: [
+              react_jsx_runtime.jsxs("div", {
+                className: "__ch4acko3-dsh-turn-fold-settings__zone",
+                children: [
+                  react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__zoneLabel", children: __ch4acko3DshTurnFoldText("settings.selectedMetrics") }),
+                  react_jsx_runtime.jsx("div", {
+                    ref: selectedSlotRef,
+                    className: "__ch4acko3-dsh-turn-fold-settings__slot",
+                    role: "group",
+                    "aria-label": __ch4acko3DshTurnFoldText("settings.selectedMetrics"),
+                    "data-empty": visibleSelected.length === 0 && !(dragView !== null && dragView.destination === "selected") ? "true" : "false",
+                    "data-drop-active": dragView !== null && dragView.destination === "selected" ? "true" : "false",
+                    children: selectedChildren
+                  })
+                ]
+              }),
+              react_jsx_runtime.jsxs("div", {
+                className: "__ch4acko3-dsh-turn-fold-settings__zone",
+                children: [
+                  react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__zoneLabel", children: __ch4acko3DshTurnFoldText("settings.availableMetrics") }),
+                  react_jsx_runtime.jsx("div", {
+                    ref: paletteRef,
+                    className: "__ch4acko3-dsh-turn-fold-settings__palette",
+                    role: "group",
+                    "aria-label": __ch4acko3DshTurnFoldText("settings.availableMetrics"),
+                    "data-empty": visibleAvailable.length === 0 ? "true" : "false",
+                    "data-drop-active": dragView !== null && dragView.destination === "available" ? "true" : "false",
+                    children: visibleAvailable.length === 0
+                      ? react_jsx_runtime.jsx("p", { className: "__ch4acko3-dsh-turn-fold-settings__empty", children: __ch4acko3DshTurnFoldText("settings.allSelected") })
+                      : visibleAvailable.map(function (field) { return renderTag(field, false); })
+                  })
+                ]
+              })
+            ]
+          }),
+          react_jsx_runtime.jsx("p", { className: "__ch4acko3-dsh-turn-fold-settings__hint", children: __ch4acko3DshTurnFoldText("settings.dragHint") }),
+          dragView === null ? null : react_jsx_runtime.jsx("div", {
+            className: "__ch4acko3-dsh-turn-fold-settings__dragPreview",
+            style: {
+              left: dragView.x - dragView.offsetX + "px",
+              top: dragView.y - dragView.offsetY + "px",
+              width: dragView.width + "px"
+            },
+            children: react_jsx_runtime.jsx("span", {
+              className: "__ch4acko3-dsh-turn-fold-settings__tag",
+              "data-selected": dragView.selected ? "true" : "false",
+              children: __ch4acko3DshTurnFoldText("settings." + dragView.field)
+            })
           })
         ]
       }) : null
@@ -601,6 +918,9 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
   var renderedState = react.useState(initialOpen);
   var bodyRendered = renderedState[0];
   var setBodyRendered = renderedState[1];
+  var overflowState = react.useState(initialOpen);
+  var overflowVisible = overflowState[0];
+  var setOverflowVisible = overflowState[1];
   var frameRef = react.useRef(null);
   var timerRef = react.useRef(null);
   var bodyIdState = react.useState(function () { return "ch4acko3-dsh-turn-fold-body-" + (++__ch4acko3DshTurnFoldBodyId); });
@@ -622,6 +942,7 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
     timerRef.current = null;
     if (expanded) {
       __ch4acko3DshTurnFoldOpenKeys.delete(foldKey);
+      setOverflowVisible(false);
       setExpanded(false);
       var delay = __ch4acko3DshTurnFoldMotionMs();
       if (delay === 0) setBodyRendered(false);
@@ -633,13 +954,19 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
     }
     __ch4acko3DshTurnFoldOpenKeys.add(foldKey);
     setBodyRendered(true);
-    if (__ch4acko3DshTurnFoldMotionMs() === 0 || typeof requestAnimationFrame !== "function") {
+    var delay = __ch4acko3DshTurnFoldMotionMs();
+    if (delay === 0 || typeof requestAnimationFrame !== "function") {
       setExpanded(true);
+      setOverflowVisible(true);
       return;
     }
     frameRef.current = requestAnimationFrame(function () {
       frameRef.current = null;
       setExpanded(true);
+      timerRef.current = setTimeout(function () {
+        timerRef.current = null;
+        setOverflowVisible(true);
+      }, delay);
     });
   }
   return react_jsx_runtime.jsxs("div", {
@@ -666,7 +993,7 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
         "aria-hidden": !expanded,
         inert: !expanded,
         children: bodyRendered ? react_jsx_runtime.jsx("div", {
-          className: "__ch4acko3-dsh-turn-fold__bodyWrap",
+          className: "__ch4acko3-dsh-turn-fold__bodyWrap" + (overflowVisible ? " __ch4acko3-dsh-turn-fold__bodyWrap--overflow-visible" : ""),
           children: react_jsx_runtime.jsxs("div", {
             className: "__ch4acko3-dsh-turn-fold__body",
             children: [

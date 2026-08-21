@@ -231,6 +231,7 @@ function buildRuntime(react, jsxRuntime) {
       })
     },
     IconApiOutline14: ({ size }) => jsxRuntime.jsx('span', { 'data-test-tool-icon': size }),
+    IconChevronDownOutline14: ({ className }) => jsxRuntime.jsx('span', { className, 'data-test-settings-chevron': '' }),
     StateDot: ({ state }) => jsxRuntime.jsx('span', { 'data-test-state-dot': state }),
   }
   const factory = new Function(
@@ -240,7 +241,7 @@ function buildRuntime(react, jsxRuntime) {
     'formatRunDuration',
     'formatTokens',
     '_deepseek_ai_dsh_client_ui_primitives',
-    `${INLINE}\nreturn { render: __ch4acko3DshTurnFoldRender, disclosure: __ch4acko3DshTurnFoldDisclosure, activityGroup: __ch4acko3DshTurnFoldActivityGroup, summary: __ch4acko3DshTurnFoldSummary, chevron: __ch4acko3DshTurnFoldChevron, settingsCard: __ch4acko3DshTurnFoldSettingsCard, metrics: __ch4acko3DshTurnFoldPlanMetrics, usage: __ch4acko3DshTurnFoldUsage, interactionKeys: __ch4acko3DshTurnFoldInteractionKeys, install: __ch4acko3DshTurnFoldInstall };`,
+    `${INLINE}\nreturn { render: __ch4acko3DshTurnFoldRender, disclosure: __ch4acko3DshTurnFoldDisclosure, activityGroup: __ch4acko3DshTurnFoldActivityGroup, summary: __ch4acko3DshTurnFoldSummary, chevron: __ch4acko3DshTurnFoldChevron, settingsCard: __ch4acko3DshTurnFoldSettingsCard, insertionIndex: __ch4acko3DshTurnFoldInsertionIndex, dropDestination: __ch4acko3DshTurnFoldDropDestination, metrics: __ch4acko3DshTurnFoldPlanMetrics, usage: __ch4acko3DshTurnFoldUsage, interactionKeys: __ch4acko3DshTurnFoldInteractionKeys, install: __ch4acko3DshTurnFoldInstall };`,
   )
   const runtime = factory(react, jsxRuntime, ReasoningRow, formatDuration, compactTokens, uiPrimitives)
   let locale = 'en'
@@ -607,7 +608,9 @@ test('activity groups: reasoning and its following tools share one closed group 
   ])
   deepEqual(result[2].child.props.nodeKey, 'think')
   deepEqual(renderCalls, ['user', 'think'])
-  deepEqual(api.activityGroup(group.props).props.children[0].props.title, 'Think · 2 tool calls')
+  const title = api.activityGroup(group.props).props.children[0].props.title
+  deepEqual(elementText(title), '1 reasoning step2 tool calls')
+  deepEqual(elementsWithClass(title, '__ch4acko3-dsh-turn-fold-activity__separator').length, 1)
 })
 
 test('activity groups: visible assistant prose is a hard boundary', () => {
@@ -654,7 +657,7 @@ test('activity groups: consecutive reasoning nodes form one closed group', () =>
     { kind: 'reasoning', key: 'think-1:0', text: 'one' },
     { kind: 'reasoning', key: 'think-2:0', text: 'two' },
   ])
-  deepEqual(api.activityGroup(result[2].props).props.children[0].props.title, 'Think')
+  deepEqual(api.activityGroup(result[2].props).props.children[0].props.title, '2 reasoning steps')
   deepEqual(renderCalls, ['user'])
 })
 
@@ -716,6 +719,22 @@ test('summary: native locale translation distinguishes completed, stopped, and i
     t: () => '1分24秒',
   })
   deepEqual(elementText(completed.props.children[0].props.children), '耗时 1 分 24 秒2 次工具调用≥ 3.4K 输入 tokens≥ 1.4K 输出 tokens')
+  const activityTitle = api.activityGroup({
+    failed: 0,
+    foldKey: 'activity:session-locale:1:think-1',
+    items: [
+      { kind: 'reasoning', key: 'think-1:0', text: 'one' },
+      { kind: 'reasoning', key: 'think-2:0', text: 'two' },
+      { kind: 'tool', key: 'tool-1' },
+      { kind: 'tool', key: 'tool-2' },
+      { kind: 'tool', key: 'tool-3' },
+    ],
+    renderNode: () => null,
+    running: false,
+    t: () => '',
+  }).props.children[0].props.title
+  deepEqual(elementText(activityTitle), '2 段思考3 次工具调用')
+  deepEqual(elementsWithClass(activityTitle, '__ch4acko3-dsh-turn-fold-activity__separator').length, 1)
   for (const [termination, suffix] of [['aborted', '已停止'], ['interrupted', '已中断']]) {
     const summary = api.summary({
       metrics: { durationMs: 84000, toolCalls: 2, inputTokens: 3350, outputTokens: 1400, tokenUsagePartial: true },
@@ -800,7 +819,62 @@ test('settings: browser runtime contributes a native plugin-settings card for it
   deepEqual(api.registeredSlots[0].component, api.settingsCard)
 })
 
-test('settings: native card exposes all metrics and persists checkbox changes', () => {
+test('settings: owner link requires a deliberate pointer hover before navigation', () => {
+  const api = buildRuntime(React, reactJsxRuntime)
+  let rendered
+  TestRenderer.act(() => {
+    rendered = TestRenderer.create(React.createElement(api.settingsCard))
+  })
+  const owner = rendered.root.findByType('a')
+  const button = rendered.root.findByType('button')
+  const realNow = Date.now
+  const realSetTimeout = globalThis.setTimeout
+  const realClearTimeout = globalThis.clearTimeout
+  let now = 1000
+  let readyCallback
+  const fakeTimer = {}
+  Date.now = () => now
+  globalThis.setTimeout = (callback, delay) => {
+    deepEqual(delay, 300)
+    readyCallback = callback
+    return fakeTimer
+  }
+  globalThis.clearTimeout = (timer) => {
+    if (timer === fakeTimer) readyCallback = undefined
+    else realClearTimeout(timer)
+  }
+  try {
+    TestRenderer.act(() => owner.props.onPointerEnter())
+    deepEqual(owner.props['data-ready'], 'false')
+    now = 1299
+    let prevented = false
+    TestRenderer.act(() => owner.props.onClick({ detail: 1, preventDefault() { prevented = true } }))
+    deepEqual(prevented, true)
+    deepEqual(button.props['aria-expanded'], true)
+
+    TestRenderer.act(() => button.props.onClick())
+    now = 1300
+    TestRenderer.act(() => readyCallback())
+    deepEqual(owner.props['data-ready'], 'true')
+    prevented = false
+    TestRenderer.act(() => owner.props.onClick({ detail: 1, preventDefault() { prevented = true } }))
+    deepEqual(prevented, false)
+    deepEqual(button.props['aria-expanded'], false)
+
+    TestRenderer.act(() => owner.props.onPointerLeave())
+    deepEqual(owner.props['data-ready'], 'false')
+    prevented = false
+    TestRenderer.act(() => owner.props.onClick({ detail: 0, preventDefault() { prevented = true } }))
+    deepEqual(prevented, false)
+    deepEqual(button.props['aria-expanded'], false)
+  } finally {
+    Date.now = realNow
+    globalThis.setTimeout = realSetTimeout
+    globalThis.clearTimeout = realClearTimeout
+  }
+})
+
+test('settings: native card links its owner and persists ordered metric tags', () => {
   const api = buildRuntime(React, reactJsxRuntime)
   let rendered
   TestRenderer.act(() => {
@@ -808,18 +882,62 @@ test('settings: native card exposes all metrics and persists checkbox changes', 
   })
   let button = rendered.root.findByType('button')
   deepEqual(button.props['aria-expanded'], false)
+  const owner = rendered.root.findByType('a')
+  deepEqual(owner.children.join(''), '@ch4acko3/dsh-turn-fold')
+  deepEqual(owner.parent.props.className, '__ch4acko3-dsh-turn-fold-settings__titleRow')
+  deepEqual(owner.props.href, 'https://github.com/CH4ACKO3/dsh-turn-fold')
+  deepEqual(owner.props.target, '_blank')
+  deepEqual(owner.props.rel, 'noreferrer')
+  deepEqual(rendered.root.findByProps({ 'data-test-settings-chevron': '' }).props.className, '__ch4acko3-dsh-turn-fold-settings__chevron')
 
   TestRenderer.act(() => button.props.onClick())
-  let checkboxes = rendered.root.findAllByType('input')
-  deepEqual(checkboxes.length, SUMMARY_FIELDS.length)
-  deepEqual(checkboxes.filter((checkbox) => checkbox.props.checked).length, DEFAULT_SUMMARY_FIELDS.length)
+  assert.match(rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-settings': '' }).props.className, /__ch4acko3-dsh-turn-fold-settings--open/)
+  deepEqual(rendered.root.findAllByProps({ className: '__ch4acko3-dsh-turn-fold-settings__dropDivider' }).length, 0)
+  let selected = rendered.root.findAllByProps({ 'data-selected': 'true' })
+  let available = rendered.root.findAllByProps({ 'data-selected': 'false' })
+  deepEqual(selected.map((tag) => tag.props['data-field']), DEFAULT_SUMMARY_FIELDS)
+  deepEqual(available.map((tag) => tag.props['data-field']), SUMMARY_FIELDS.filter((field) => !DEFAULT_SUMMARY_FIELDS.includes(field)))
 
-  const reasoning = rendered.root.findAllByType('label').find((label) => label.findByType('span').children.join('') === 'Reasoning tokens')
-  TestRenderer.act(() => reasoning.findByType('input').props.onChange({ currentTarget: { checked: true } }))
-  checkboxes = rendered.root.findAllByType('input')
-  deepEqual(checkboxes.find((checkbox) => checkbox.parent.findByType('span').children.join('') === 'Reasoning tokens').props.checked, true)
+  const reasoning = available.find((tag) => tag.props['data-field'] === 'reasoningTokens')
+  TestRenderer.act(() => reasoning.props.onClick())
+  selected = rendered.root.findAllByProps({ 'data-selected': 'true' })
+  deepEqual(selected.map((tag) => tag.props['data-field']), [...DEFAULT_SUMMARY_FIELDS, 'reasoningTokens'])
+
+  let input = selected.find((tag) => tag.props['data-field'] === 'inputTokens')
+  TestRenderer.act(() => input.props.onKeyDown({ altKey: true, key: 'ArrowLeft', preventDefault() {} }))
+  input = rendered.root.findAllByProps({ 'data-selected': 'true' }).find((tag) => tag.props['data-field'] === 'inputTokens')
+  TestRenderer.act(() => input.props.onKeyDown({ altKey: true, key: 'ArrowLeft', preventDefault() {} }))
+  selected = rendered.root.findAllByProps({ 'data-selected': 'true' })
+  deepEqual(selected.map((tag) => tag.props['data-field']), ['inputTokens', 'duration', 'toolCalls', 'outputTokens', 'reasoningTokens'])
+
+  TestRenderer.act(() => api.setSummaryFields([]))
+  const slot = rendered.root.findByProps({ className: '__ch4acko3-dsh-turn-fold-settings__slot' })
+  deepEqual(slot.props['data-empty'], 'true')
+  deepEqual(slot.findByProps({ className: '__ch4acko3-dsh-turn-fold-settings__empty' }).children.join(''), 'No metrics will be shown')
 
   TestRenderer.act(() => rendered.unmount())
+})
+
+test('settings: wrapped tag hit testing projects an exact insertion index', () => {
+  const api = buildRuntime(React, reactJsxRuntime)
+  const bounds = [
+    { top: 0, bottom: 28, left: 0, width: 60 },
+    { top: 0, bottom: 28, left: 68, width: 80 },
+    { top: 36, bottom: 64, left: 0, width: 72 },
+    { top: 36, bottom: 64, left: 80, width: 64 },
+  ]
+  deepEqual(api.insertionIndex(bounds, -5, 12), 0)
+  deepEqual(api.insertionIndex(bounds, 50, 12), 1)
+  deepEqual(api.insertionIndex(bounds, 200, 12), 2)
+  deepEqual(api.insertionIndex(bounds, 10, 32), 2)
+  deepEqual(api.insertionIndex(bounds, 120, 48), 4)
+  deepEqual(api.insertionIndex(bounds, 10, 80), 2)
+  deepEqual(api.insertionIndex(bounds, 50, -1000), 1)
+  deepEqual(api.insertionIndex(bounds, 120, 1000), 4)
+  deepEqual(api.dropDestination(100, -1000), 'selected')
+  deepEqual(api.dropDestination(100, 100), 'selected')
+  deepEqual(api.dropDestination(100, 101), 'available')
+  deepEqual(api.dropDestination(100, 1000), 'available')
 })
 
 test('metrics: records native usage and timing fields even when they are not displayed', () => {
@@ -1218,7 +1336,7 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
   })
   button = rendered.root.findByType('button')
   deepEqual(button.props['aria-expanded'], true)
-  deepEqual(elementText(button.props.children), 'Think · 2 tool calls')
+  deepEqual(elementText(button.props.children), '2 reasoning steps2 tool calls')
   deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-2' }).length, 1)
   deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'inspect result' }).length, 1)
 
@@ -1267,6 +1385,93 @@ test('activity groups: closing animates before the mounted body is removed', () 
   TestRenderer.act(() => rendered.unmount())
 })
 
+test('disclosures: expanded bodies release overflow only after motion completes', () => {
+  function Seat({ nodeKey }) {
+    return React.createElement('div', { 'data-seat': nodeKey })
+  }
+  const api = buildRuntime(React, reactJsxRuntime)
+  const cases = [
+    {
+      component: api.activityGroup,
+      bodyWrapClass: '__ch4acko3-dsh-turn-fold-activity__bodyWrap',
+      visibleClass: '__ch4acko3-dsh-turn-fold-activity__bodyWrap--overflow-visible',
+      props: {
+        failed: 0,
+        foldKey: 'activity:session-overflow:1:tool-1',
+        items: [{ kind: 'tool', key: 'tool-1' }, { kind: 'tool', key: 'tool-2' }],
+        renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+        running: false,
+        t: () => '',
+      },
+    },
+    {
+      component: api.disclosure,
+      bodyWrapClass: '__ch4acko3-dsh-turn-fold__bodyWrap',
+      visibleClass: '__ch4acko3-dsh-turn-fold__bodyWrap--overflow-visible',
+      props: {
+        activity: ['think'],
+        closingReasoning: [],
+        metrics: { durationMs: 1000, toolCalls: 0 },
+        foldKey: 'session-overflow:1',
+        nodeStore: nodeStoreFrom([{ key: 'think', kind: 'assistant-step', data: {} }]),
+        orderPositions: new Map([['think', 0]]),
+        renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+        sessionId: 'session-overflow',
+        t: () => '1s',
+      },
+    },
+  ]
+
+  for (const candidate of cases) {
+    let nextFrame
+    const timers = []
+    withGlobals({
+      matchMedia: () => ({ matches: false }),
+      requestAnimationFrame(callback) {
+        nextFrame = callback
+        return 1
+      },
+      cancelAnimationFrame() {},
+      setTimeout(callback, delay) {
+        deepEqual(delay, 180)
+        timers.push(callback)
+        return timers.length
+      },
+      clearTimeout() {},
+    }, () => {
+      let rendered
+      TestRenderer.act(() => {
+        rendered = TestRenderer.create(React.createElement(candidate.component, candidate.props))
+      })
+      let button = rendered.root.findByType('button')
+      TestRenderer.act(() => button.props.onClick())
+
+      let bodyWrap = rendered.root.find((node) => node.props.className === candidate.bodyWrapClass)
+      deepEqual(button.props['aria-expanded'], false)
+      assert.doesNotMatch(bodyWrap.props.className, new RegExp(candidate.visibleClass))
+
+      TestRenderer.act(() => nextFrame())
+      button = rendered.root.findByType('button')
+      bodyWrap = rendered.root.find((node) => node.props.className === candidate.bodyWrapClass)
+      deepEqual(button.props['aria-expanded'], true)
+      assert.doesNotMatch(bodyWrap.props.className, new RegExp(candidate.visibleClass))
+
+      TestRenderer.act(() => timers.shift()())
+      bodyWrap = rendered.root.find((node) => typeof node.props.className === 'string' && node.props.className.includes(candidate.bodyWrapClass))
+      assert.match(bodyWrap.props.className, new RegExp(candidate.visibleClass))
+
+      TestRenderer.act(() => button.props.onClick())
+      bodyWrap = rendered.root.find((node) => node.props.className === candidate.bodyWrapClass)
+      deepEqual(button.props['aria-expanded'], false)
+      assert.doesNotMatch(bodyWrap.props.className, new RegExp(candidate.visibleClass))
+
+      TestRenderer.act(() => timers.shift()())
+      deepEqual(rendered.root.findAll((node) => typeof node.props.className === 'string' && node.props.className.includes(candidate.bodyWrapClass)).length, 0)
+      TestRenderer.act(() => rendered.unmount())
+    })
+  }
+})
+
 test('disclosure: real React state opens and closes the mounted body', () => {
   function Seat({ nodeKey }) {
     return React.createElement('div', { 'data-seat': nodeKey })
@@ -1294,6 +1499,7 @@ test('disclosure: real React state opens and closes the mounted body', () => {
     TestRenderer.act(() => button.props.onClick())
     button = rendered.root.findByType('button')
     deepEqual(button.props['aria-expanded'], true)
+    assert.match(rendered.root.find((node) => typeof node.props.className === 'string' && node.props.className.includes('__ch4acko3-dsh-turn-fold__bodyWrap')).props.className, /__ch4acko3-dsh-turn-fold__bodyWrap--overflow-visible/)
     deepEqual(rendered.root.findAllByProps({ 'data-seat': 'think' }).length, 1)
     deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'closing thought' }).length, 1)
 
@@ -1406,6 +1612,21 @@ test('style: module reload refreshes only the scoped plugin style', () => {
     assert.match(style.textContent, /__ch4acko3-dsh-turn-fold/)
     assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-metric-roll/)
     assert.match(style.textContent, /__ch4acko3-dsh-turn-fold__separator/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-activity__separator\{display:inline-block;width:1px;height:10px;margin:0 7px;/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold__clip\{display:grid;grid-template-columns:minmax\(0,1fr\);grid-template-rows:0fr;min-width:0;max-width:100%/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-activity__clip\{display:grid;grid-template-columns:minmax\(0,1fr\);grid-template-rows:0fr;min-width:0;max-width:100%/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold__body>\*\{min-width:0;max-width:100%\}/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-activity__body>\*\{min-width:0;max-width:100%\}/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings:hover\{border-color:var\(--dsw-alias-label-dimmed\)\}/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings--open\{background:var\(--dsw-alias-bg-layer-2\);border-color:var\(--dsw-alias-label-dimmed\)\}/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings__pluginName:hover\{color:var\(--dsw-alias-label-secondary\);opacity:\.72\}/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings__pluginName\[data-ready=true\],.__ch4acko3-dsh-turn-fold-settings__pluginName:focus-visible\{color:var\(--dsw-alias-state-business-primary\);opacity:1\}/)
+    assert.doesNotMatch(style.textContent, /__ch4acko3-dsh-turn-fold-settings__pluginName:hover[^}]*text-decoration/)
+    assert.doesNotMatch(style.textContent, /__ch4acko3-dsh-turn-fold-settings__dropDivider/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings__slot\{[^}]*min-height:44px;/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings__palette\{[^}]*min-height:44px;/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings__dropSlot:before\{[^}]*background:#3b82f6;/)
+    assert.match(style.textContent, /__ch4acko3-dsh-turn-fold-settings__dragPreview\{position:fixed;z-index:1400;pointer-events:none;/)
     assert.doesNotMatch(style.textContent, /__ch4acko3-dsh-turn-fold__header:hover/)
   })
 })
