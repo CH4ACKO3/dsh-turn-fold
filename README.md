@@ -2,6 +2,8 @@
 
 English | [简体中文](README.zh-CN.md)
 
+[![Powered by Harmony](https://memorax-ai.github.io/dsh-harmony/harmony-powered.svg)](https://memorax-ai.github.io/dsh-harmony/)
+
 A [dsh-harmony](https://github.com/memorax-ai/dsh-harmony) provider that adds
 Codex-Desktop-style turn folding to the DSH WebUI conversation.
 

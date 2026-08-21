@@ -2,6 +2,8 @@
 
 [English](README.md) | 简体中文
 
+[![Powered by Harmony](https://memorax-ai.github.io/dsh-harmony/harmony-powered.svg)](https://memorax-ai.github.io/dsh-harmony/)
+
 一个基于 [dsh-harmony](https://github.com/memorax-ai/dsh-harmony) 的 Provider，为 DSH WebUI 对话添加 Codex Desktop 风格的回合折叠。
 
 https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
