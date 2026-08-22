@@ -1,6 +1,6 @@
 {
   "name": "@ch4acko3/dsh-turn-fold",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Codex-style turn folding for the DSH WebUI conversation, implemented as a dsh-harmony provider.",
   "main": "./index.cjs",
   "engines": {
@@ -30,7 +30,9 @@
       "patch": "./harmony.patch.yml"
     },
     "harmony": {
-      "patches": ["./patch.cjs"]
+      "patches": [
+        "./patch.cjs"
+      ]
     },
     "plugin": {
       "schemaVersion": 1,
@@ -53,17 +55,18 @@
     "@deepseek-ai/schemastery": "^3.18.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.8",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.8",
-    "dsh-harmony": "^0.7.0"
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.8 || ^0.1.1-0",
+    "@deepseek-ai/dsh-settings": "^0.1.0-rc.8 || ^0.1.1-0",
+    "dsh-harmony": "^0.7.0 || ^0.8.0"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.8",
     "@deepseek-ai/dsh-settings": "0.1.0-rc.8",
     "@phenomnomnominal/tsquery": "^6.2.0",
-    "dsh-harmony": "^0.7.2",
+    "dsh-harmony": "^0.8.0",
     "react": "18.3.1",
     "react-test-renderer": "18.3.1",
+    "semver": "^7.8.5",
     "typescript": "^6.0.3"
   }
 }

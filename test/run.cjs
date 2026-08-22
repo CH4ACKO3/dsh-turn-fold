@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const assert = require('node:assert')
+const semver = require('semver')
 const ts = require('typescript')
 const { tsquery } = require('@phenomnomnominal/tsquery')
 const React = require('react')
@@ -71,9 +72,12 @@ function applyPatch(source, patch) {
 
 // ---- Published target and transformed bundle --------------------------------
 
-test('target: package version stays pinned to the published DSH target', () => {
+test('target: installed DSH stays inside the bounded Patch compatibility range', () => {
   const manifest = JSON.parse(fs.readFileSync(TARGET_PACKAGE, 'utf8'))
-  deepEqual(manifest.version, PATCHES[0].target.version)
+  assert.ok(semver.satisfies(manifest.version, PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.0-rc.8', PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.1-rc.2', PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.2.0-rc.1', PATCHES[0].target.version, { includePrerelease: true }))
   deepEqual(PATCHES[1].target.version, PATCHES[0].target.version)
 })
 
@@ -100,10 +104,16 @@ test('release: npm publication gates an idempotent GitHub Release', () => {
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {
-    '@deepseek-ai/dsh-client-ui-conversation': '^0.1.0-rc.8',
-    '@deepseek-ai/dsh-settings': '^0.1.0-rc.8',
-    'dsh-harmony': '^0.7.0',
+    '@deepseek-ai/dsh-client-ui-conversation': '^0.1.0-rc.8 || ^0.1.1-0',
+    '@deepseek-ai/dsh-settings': '^0.1.0-rc.8 || ^0.1.1-0',
+    'dsh-harmony': '^0.7.0 || ^0.8.0',
   })
+  assert.ok(semver.satisfies('0.1.0-rc.8', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation']))
+  assert.ok(semver.satisfies('0.1.1-rc.2', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation']))
+  assert.ok(!semver.satisfies('0.2.0', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation']))
+  assert.ok(semver.satisfies('0.7.0', MANIFEST.peerDependencies['dsh-harmony']))
+  assert.ok(semver.satisfies('0.8.0', MANIFEST.peerDependencies['dsh-harmony']))
+  assert.ok(!semver.satisfies('0.9.0', MANIFEST.peerDependencies['dsh-harmony']))
   const hostConfig = require(path.join(ROOT, 'index.cjs')).Config
   deepEqual(hostConfig({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
   deepEqual(hostConfig['~standard'].validate({}).value, { summaryFields: DEFAULT_SUMMARY_FIELDS })
@@ -173,9 +183,9 @@ test('provider: every Source Patch has an exact selector contract', () => {
   for (const patch of PATCHES) {
     assert.ok(typeof patch.description === 'string' && patch.description.length > 0, `${patch.id}: description must explain the Patch`)
     deepEqual(patch.expect, 1, `${patch.id}: expect must stay exact`)
-    deepEqual(patch.target.file, 'lib/client.js', `${patch.id}: target must use the Harmony 0.7 file contract`)
+    deepEqual(patch.target.file, 'lib/client.js', `${patch.id}: target must use the Harmony file contract`)
     deepEqual(patch.target.files, undefined, `${patch.id}: legacy target files must stay removed`)
-    assert.ok(patch.target.version, `${patch.id}: target version must stay pinned`)
+    assert.ok(patch.target.version, `${patch.id}: target version range must stay bounded`)
   }
 })
 

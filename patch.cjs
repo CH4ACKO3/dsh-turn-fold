@@ -13,14 +13,14 @@
 //   3. install-turn-fold-services — registers the plugin's native DSH locale
 //      namespace and binds its native settings scope during conversation boot.
 //
-// All three selectors are pinned with an exact `expect: 1` and a target version so
-// a compiled-shape drift fails loudly in `dsh harmony status`.
+// All three selectors use an exact `expect: 1` inside a bounded target-version
+// range, so a compiled-shape drift still fails loudly in `dsh harmony status`.
 
 const INLINE = require('./inline-source.cjs')
 
 const TARGET = {
   package: '@deepseek-ai/dsh-client-ui-conversation',
-  version: '0.1.0-rc.8',
+  version: '>=0.1.0-rc.8 <0.2.0-0',
   file: 'lib/client.js',
 }
 

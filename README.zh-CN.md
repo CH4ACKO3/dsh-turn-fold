@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 
 ## 工作原理
 
-三个固定目标的 Source Patch 会在内存中修改 `@deepseek-ai/dsh-client-ui-conversation` 的编译后浏览器包（`lib/client.js`），不会修改已安装的 DSH 文件。
+三个带形状校验的 Source Patch 会在内存中修改 `@deepseek-ai/dsh-client-ui-conversation` `>=0.1.0-rc.8 <0.2.0-0` 的编译后浏览器包（`lib/client.js`），不会修改已安装的 DSH 文件。每条选择器仍必须恰好命中一次，因此遇到不兼容的编译形状时会停止应用，而不会修改不确定的目标。
 
 | Patch | 选择器（预期命中 1 次） | 作用 |
 | --- | --- | --- |
