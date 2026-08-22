@@ -10,8 +10,9 @@ Codex-Desktop-style turn folding to the DSH WebUI conversation.
 https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 
 During a turn, the summary bar remains visible while native thinking, notes,
-commands, and tool calls keep streaming. Consecutive reasoning and tool activity
-share one compact group from the second item onward. When a turn settles, known
+commands, and tool calls keep streaming. Consecutive reasoning, context
+injections, and tool activity share one compact group from the second item
+onward. When a turn settles, known
 Agent activity, including context injection, moves into one disclosure
 immediately before the final answer. Its configurable metrics default to wall
 time, tool-call count, and input/output tokens, and appear only when the loaded

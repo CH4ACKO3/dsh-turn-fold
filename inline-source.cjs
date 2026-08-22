@@ -242,9 +242,11 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
   var foldKey = props.foldKey;
   var toolCount = 0;
   var reasoningCount = 0;
+  var contextCount = 0;
   for (var itemIndex = 0; itemIndex < props.items.length; itemIndex++) {
     if (props.items[itemIndex].kind === "tool") toolCount++;
-    else reasoningCount++;
+    else if (props.items[itemIndex].kind === "reasoning") reasoningCount++;
+    else if (props.items[itemIndex].kind === "context") contextCount++;
   }
   var initialOpen = __ch4acko3DshTurnFoldOpenKeys.has(foldKey);
   var openState = react.useState(initialOpen);
@@ -265,12 +267,15 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
     };
   }, []);
   var reasoningTitle = reasoningCount === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.reasoning." + (reasoningCount === 1 ? "one" : "many"), { count: reasoningCount });
+  var contextTitle = contextCount === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.context." + (contextCount === 1 ? "one" : "many"), { count: contextCount });
   var toolTitle = toolCount === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.tools." + (toolCount === 1 ? "one" : "many"), { count: toolCount });
-  var title = reasoningTitle === null ? toolTitle : toolTitle === null ? reasoningTitle : react_jsx_runtime.jsxs(react_jsx_runtime.Fragment, { children: [
-    reasoningTitle,
-    react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-activity__separator", "aria-hidden": true }),
-    toolTitle
-  ] });
+  var titleParts = [reasoningTitle, contextTitle, toolTitle].filter(function (part) { return part !== null; });
+  var titleChildren = [];
+  for (var titleIndex = 0; titleIndex < titleParts.length; titleIndex++) {
+    if (titleIndex > 0) titleChildren.push(react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-activity__separator", "aria-hidden": true }, "separator-" + String(titleIndex)));
+    titleChildren.push(titleParts[titleIndex]);
+  }
+  var title = titleParts.length === 1 ? titleParts[0] : react_jsx_runtime.jsx(react_jsx_runtime.Fragment, { children: titleChildren });
   var failure = props.failed === 0 ? null : __ch4acko3DshTurnFoldText("activityGroup.failures." + (props.failed === 1 ? "one" : "many"), { count: props.failed });
   var state = props.running ? "running" : props.failed > 0 ? "error" : "ok";
   function toggle() {
@@ -829,7 +834,7 @@ function __ch4acko3DshTurnFoldHasToolCallBlock(node) {
   return Array.isArray(blocks) && blocks.some(function (block) { return block !== void 0 && block.kind === "tool-call"; });
 }
 function __ch4acko3DshTurnFoldIsActivityNode(node) {
-  if (node.kind === "tool-call") return true;
+  if (node.kind === "tool-call" || node.kind === "context") return true;
   if (node.kind !== "assistant-step" || __ch4acko3DshTurnFoldReasoningTexts(node).length === 0) return false;
   return __ch4acko3DshTurnFoldHasToolCallBlock(node) || !__ch4acko3DshTurnFoldHasVisibleNonReasoning(node);
 }
@@ -877,6 +882,8 @@ function __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sess
         if (activityEntry.node.kind === "tool-call") {
           toolKeys.push(activityEntry.key);
           items.push({ kind: "tool", key: activityEntry.key });
+        } else if (activityEntry.node.kind === "context") {
+          items.push({ kind: "context", key: activityEntry.key });
         } else {
           var texts = __ch4acko3DshTurnFoldReasoningTexts(activityEntry.node);
           for (var textIndex = 0; textIndex < texts.length; textIndex++) items.push({ kind: "reasoning", key: String(activityEntry.key) + ":" + String(textIndex), text: texts[textIndex] });

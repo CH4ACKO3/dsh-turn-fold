@@ -2,6 +2,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const assert = require('node:assert')
 const ts = require('typescript')
 const { tsquery } = require('@phenomnomnominal/tsquery')
@@ -103,7 +104,10 @@ test('provider: native settings schema exposes every summary metric with the int
     '@deepseek-ai/dsh-settings': '^0.1.0-rc.8',
     'dsh-harmony': '^0.7.0',
   })
-  deepEqual(require(path.join(ROOT, 'index.cjs')).Config({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
+  const hostConfig = require(path.join(ROOT, 'index.cjs')).Config
+  deepEqual(hostConfig({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
+  deepEqual(hostConfig['~standard'].validate({}).value, { summaryFields: DEFAULT_SUMMARY_FIELDS })
+  assert.ok(hostConfig['~standard'].validate({ summaryFields: ['unknown'] }).issues)
   deepEqual(SUMMARY_FIELDS, [
     'duration',
     'toolCalls',
@@ -119,6 +123,8 @@ test('provider: native settings schema exposes every summary metric with the int
 })
 
 test('provider: host entry registers the dsh-turn-fold settings namespace', () => {
+  const hostSource = fs.readFileSync(path.join(ROOT, 'index.cjs'), 'utf8')
+  assert.doesNotMatch(hostSource, /require\(['"]@deepseek-ai\/dsh-settings['"]\)/)
   const provider = require(path.join(ROOT, 'index.cjs'))
   const config = provider.Config({ summaryFields: ['duration', 'reasoningTokens'] })
   let registration
@@ -135,8 +141,26 @@ test('provider: host entry registers the dsh-turn-fold settings namespace', () =
     },
   }, config)
   deepEqual(registration.namespace, 'dsh-turn-fold')
-  deepEqual(registration.schema, provider.Config)
+  deepEqual(registration.schema({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
   deepEqual(registration.options, { base: config })
+})
+
+test('provider: host entry loads while the ESM settings graph is still importing', () => {
+  const script = `
+    const loading = import('@deepseek-ai/dsh-settings')
+    try {
+      require(${JSON.stringify(path.join(ROOT, 'index.cjs'))})
+    } catch (error) {
+      console.error(error && error.stack ? error.stack : error)
+      process.exitCode = 1
+    }
+    loading.catch((error) => {
+      console.error(error && error.stack ? error.stack : error)
+      process.exitCode = 1
+    })
+  `
+  const result = spawnSync(process.execPath, ['-e', script], { cwd: ROOT, encoding: 'utf8' })
+  deepEqual(result.status, 0, result.stderr || result.stdout)
 })
 
 test('locale files: native zh and en dictionaries have the same non-empty key set', () => {
@@ -574,13 +598,13 @@ test('activity groups: one tool stays native and the second adjacent tool starts
   deepEqual(second.renderCalls, ['user'])
 })
 
-test('activity groups: any intervening Chat node breaks adjacency', () => {
+test('activity groups: an intervening non-activity Chat node breaks adjacency', () => {
   const { api, ChatNodeSeat } = buildSandbox()
   const turn = turnLocation(5, 'open', Date.now() - 2000)
   const nodes = [
     { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
     { key: 'tool-1', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
-    { key: 'context', kind: 'context', location: { kind: 'step', turn }, data: {} },
+    { key: 'command', kind: 'command', location: { kind: 'step', turn }, data: {} },
     { key: 'tool-2', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
   ]
   const result = classify(api.render({
@@ -590,7 +614,35 @@ test('activity groups: any intervening Chat node breaks adjacency', () => {
     sessionId: 'session-tool-boundary',
   }), api, ChatNodeSeat)
   deepEqual(result.filter((item) => item.kind === 'activity-group').length, 0)
-  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'tool-1', 'context', 'tool-2'])
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'tool-1', 'command', 'tool-2'])
+})
+
+test('activity groups: context injection joins reasoning and tools while keeping its native renderer', () => {
+  const { api, ChatNodeSeat, renderCalls } = buildSandbox()
+  const turn = turnLocation(6, 'open', Date.now() - 2000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'plan' }] } },
+    { key: 'context', kind: 'context', location: { kind: 'step', turn }, data: { content: [], source: {}, provenance: { role: 'system', label: null }, form: null } },
+    { key: 'tool', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', isError: false } } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-context-activity',
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'summary', 'activity-group'])
+  const group = result[2]
+  deepEqual(group.props.items, [
+    { kind: 'reasoning', key: 'think:0', text: 'plan' },
+    { kind: 'context', key: 'context' },
+    { kind: 'tool', key: 'tool' },
+  ])
+  deepEqual(renderCalls, ['user'])
+  const title = api.activityGroup(group.props).props.children[0].props.title
+  deepEqual(elementText(title), '1 reasoning step1 context injection1 tool call')
+  deepEqual(elementsWithClass(title, '__ch4acko3-dsh-turn-fold-activity__separator').length, 2)
 })
 
 test('activity groups: reasoning and its following tools share one closed group while prose stays outside', () => {
@@ -1348,6 +1400,35 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
   deepEqual(elementText(button.props.children), '2 reasoning steps2 tool calls')
   deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-2' }).length, 1)
   deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'inspect result' }).length, 1)
+
+  TestRenderer.act(() => rendered.unmount())
+})
+
+test('activity groups: expanded context injection uses the native node renderer', () => {
+  function Seat({ nodeKey }) {
+    return React.createElement('div', { 'data-seat': nodeKey })
+  }
+  const api = buildRuntime(React, reactJsxRuntime)
+  const props = {
+    failed: 0,
+    foldKey: 'activity:session-context-renderer:1:think',
+    items: [
+      { kind: 'reasoning', key: 'think:0', text: 'plan' },
+      { kind: 'context', key: 'context' },
+    ],
+    renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+    running: false,
+    t: () => '',
+  }
+  let rendered
+  TestRenderer.act(() => {
+    rendered = TestRenderer.create(React.createElement(api.activityGroup, props))
+  })
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'context' }).length, 0)
+
+  TestRenderer.act(() => rendered.root.findByType('button').props.onClick())
+  deepEqual(rendered.root.findAllByProps({ 'data-seat': 'context' }).length, 1)
+  deepEqual(rendered.root.findAllByProps({ 'data-test-reasoning': 'plan' }).length, 1)
 
   TestRenderer.act(() => rendered.unmount())
 })

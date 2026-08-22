@@ -17,6 +17,8 @@
   "summary.interruptedSuffix": " - Interrupted",
   "activityGroup.reasoning.one": "{count} reasoning step",
   "activityGroup.reasoning.many": "{count} reasoning steps",
+  "activityGroup.context.one": "{count} context injection",
+  "activityGroup.context.many": "{count} context injections",
   "activityGroup.tools.one": "{count} tool call",
   "activityGroup.tools.many": "{count} tool calls",
   "activityGroup.failures.one": "{count} failed",

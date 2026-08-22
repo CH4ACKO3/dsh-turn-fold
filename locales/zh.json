@@ -17,6 +17,8 @@
   "summary.interruptedSuffix": " - 已中断",
   "activityGroup.reasoning.one": "{count} 段思考",
   "activityGroup.reasoning.many": "{count} 段思考",
+  "activityGroup.context.one": "{count} 次上下文注入",
+  "activityGroup.context.many": "{count} 次上下文注入",
   "activityGroup.tools.one": "{count} 次工具调用",
   "activityGroup.tools.many": "{count} 次工具调用",
   "activityGroup.failures.one": "{count} 个失败",
