@@ -834,6 +834,19 @@ function __ch4acko3DshTurnFoldHasToolCallBlock(node) {
   var blocks = node.data === void 0 ? void 0 : node.data.blocks;
   return Array.isArray(blocks) && blocks.some(function (block) { return block !== void 0 && block.kind === "tool-call"; });
 }
+// An image tool result is a primary visual artifact, not an intermediate step, so
+// it should stay visible when the surrounding agent activity folds. Detection is
+// content-based (any tool-result carrying an image block) rather than tied to a
+// particular tool name, so it keeps working for any plugin that emits images.
+function __ch4acko3DshTurnFoldIsPromotableImageResult(node) {
+  if (node === void 0 || node.kind !== "tool-call" || node.data === void 0) return false;
+  var root = node.data.root;
+  if (root === void 0 || root.kind !== "tool-result" || !Array.isArray(root.content)) return false;
+  for (var index = 0; index < root.content.length; index++) {
+    if (root.content[index] !== void 0 && root.content[index].type === "image") return true;
+  }
+  return false;
+}
 function __ch4acko3DshTurnFoldIsActivityNode(node) {
   if (node.kind === "tool-call" || node.kind === "context") return true;
   if (node.kind !== "assistant-step" || __ch4acko3DshTurnFoldReasoningTexts(node).length === 0) return false;
@@ -1208,8 +1221,10 @@ function __ch4acko3DshTurnFoldRender(props) {
       }, "ch4acko3-dsh-turn-fold-summary-" + String(sessionId) + "-" + plan.turn) });
     }
     if (foldable && key === plan.closingKey) {
+      var promotedImageKeys = plan.activity.filter(function (activityKey) { return __ch4acko3DshTurnFoldIsPromotableImageResult(nodeStore.get(activityKey)); });
+      var foldedActivityKeys = plan.activity.filter(function (activityKey) { return promotedImageKeys.indexOf(activityKey) < 0; });
       entries.push({ type: "element", element: react_jsx_runtime.jsx(__ch4acko3DshTurnFoldDisclosure, {
-        activity: plan.activity,
+        activity: foldedActivityKeys,
         closingReasoning: plan.closingReasoning,
         completed: plan.endReason === "completed",
         metrics: __ch4acko3DshTurnFoldPlanMetrics(plan, nodeStore, timeline),
@@ -1221,6 +1236,9 @@ function __ch4acko3DshTurnFoldRender(props) {
         renderNode: renderNode,
         t: props.t
       }, "ch4acko3-dsh-turn-fold-" + String(sessionId) + "-" + plan.turn) });
+      for (var promotedImageIndex = 0; promotedImageIndex < promotedImageKeys.length; promotedImageIndex++) {
+        entries.push({ type: "element", element: renderNode(promotedImageKeys[promotedImageIndex]) });
+      }
     }
     entries.push({
       type: "node",

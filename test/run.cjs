@@ -482,6 +482,30 @@ test('fold: one disclosure collects activity split by a steering node', () => {
   deepEqual(result[2].key, 'ch4acko3-dsh-turn-fold-session-a-1')
 })
 
+test('fold: image tool results promote out of the disclosure and render before the final answer', () => {
+  const { api, ChatNodeSeat } = buildSandbox()
+  const turn = turnLocation(1, 'closed', 1000, 85000)
+  const nodes = [
+    { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+    { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 1, finalNode: { seq: 10 }, usage: { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 200 } } },
+    { key: 'tool-img', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', call: { name: 'generate_image' }, content: [{ type: 'text', text: 'ok' }, { type: 'image', attachment: { id: 'a' } }] } } },
+    { key: 'tool-norm', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', call: { name: 'pwsh' }, content: [{ type: 'text', text: 'done' }] } } },
+    { key: 'answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 2, finalNode: { seq: 20 }, usage: { inputTokens: 2000, outputTokens: 900, cacheReadTokens: 100 } } },
+    { key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { closing: { finalNode: { seq: 20 } } } },
+  ]
+  const result = classify(api.render({
+    order: nodes.map((node) => node.key),
+    nodeStore: nodeStoreFrom(nodes),
+    timeline: timelineFrom([turn]),
+    sessionId: 'session-img',
+  }), api, ChatNodeSeat)
+  deepEqual(result.map((item) => item.kind), ['seat', 'disclosure', 'seat', 'seat', 'seat'])
+  deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'tool-img', 'answer', 'tail'])
+  const disclosure = result.find((item) => item.kind === 'disclosure')
+  deepEqual(disclosure.props.activity, ['think', 'tool-norm'])
+  deepEqual(disclosure.props.foldKey, 'session-img:1')
+})
+
 test('fold: reasoning in the closing assistant node moves into the disclosure without duplicating the final answer', () => {
   const { api, ChatNodeSeat } = buildSandbox()
   const turn = turnLocation(2, 'closed', 1000, 5000)
