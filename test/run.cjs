@@ -94,7 +94,7 @@ test('provider: scoped package name matches the DSH bundle registration', () => 
 })
 
 test('release: npm publication gates an idempotent GitHub Release', () => {
-  const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8')
+  const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8').replaceAll('\r\n', '\n')
   assert.match(workflow, /publish:\n\s+permissions:\n\s+contents: read\n\s+id-token: write/)
   assert.match(workflow, /github-release:\n\s+needs: publish\n\s+permissions:\n\s+contents: write/)
   assert.match(workflow, /gh release view "\$GITHUB_REF_NAME" --repo "\$GITHUB_REPOSITORY"/)
