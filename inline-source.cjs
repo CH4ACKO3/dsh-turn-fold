@@ -318,6 +318,7 @@ function __ch4acko3DshTurnFoldActivityGroup(props) {
     "data-ch4acko3-dsh-turn-fold-activity-open": open ? "true" : "false",
     "data-dsh-fold-owner": "@ch4acko3/dsh-turn-fold",
     "data-dsh-fold-scope": "activity-run",
+    "data-dsh-fold-keys": JSON.stringify(props.nodeKeys),
     "data-state": state,
     children: [
       react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.DisclosureRow, {
@@ -871,7 +872,10 @@ function __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sess
       activityEntries.push(next);
       j++;
     }
-    var selected = activityEntries.some(function (activityEntry) { return interactionKeys.has(activityEntry.key); });
+    var foldKey = "activity:" + String(sessionId) + ":" + String(turn) + ":" + String(entry.key);
+    // Focus inside an already-open group belongs to its native disclosure rows.
+    // Keep their parent stable when a streaming Session snapshot renders again.
+    var selected = !__ch4acko3DshTurnFoldOpenKeys.has(foldKey) && activityEntries.some(function (activityEntry) { return interactionKeys.has(activityEntry.key); });
     if (turn === null || activityEntries.length < 2 || selected) {
       for (var k = 0; k < activityEntries.length; k++) out.push(__ch4acko3DshTurnFoldRenderNativeEntry(activityEntries[k], renderNode, false));
     } else {
@@ -891,11 +895,11 @@ function __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sess
       }
       if (__ch4acko3DshTurnFoldHasVisibleNonReasoning(entry.node)) out.push(__ch4acko3DshTurnFoldRenderNativeEntry(entry, renderNode, true));
       var facts = __ch4acko3DshTurnFoldToolFacts(toolKeys, nodeStore);
-      var foldKey = "activity:" + String(sessionId) + ":" + String(turn) + ":" + String(entry.key);
       out.push(react_jsx_runtime.jsx(__ch4acko3DshTurnFoldActivityGroup, {
         failed: facts.failed,
         foldKey: foldKey,
         items: items,
+        nodeKeys: activityEntries.map(function (activityEntry) { return activityEntry.key; }),
         renderNode: renderNode,
         running: facts.running,
         t: t
@@ -982,6 +986,7 @@ function __ch4acko3DshTurnFoldDisclosure(props) {
     "data-ch4acko3-dsh-turn-fold-open": expanded ? "true" : "false",
     "data-dsh-fold-owner": "@ch4acko3/dsh-turn-fold",
     "data-dsh-fold-scope": "turn",
+    "data-dsh-fold-keys": JSON.stringify(activity),
     children: [
       react_jsx_runtime.jsx("button", {
         type: "button",

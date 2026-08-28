@@ -1331,6 +1331,7 @@ test('disclosure: accessible control, ownership, and open state survive remounts
   deepEqual(closed.props['data-ch4acko3-dsh-turn-fold'], '')
   deepEqual(closed.props['data-dsh-fold-owner'], '@ch4acko3/dsh-turn-fold')
   deepEqual(closed.props['data-dsh-fold-scope'], 'turn')
+  deepEqual(closed.props['data-dsh-fold-keys'], '["think"]')
   deepEqual(closed.props.children[1].props.className, '__ch4acko3-dsh-turn-fold__rule')
   deepEqual(closed.props.children[2].props['aria-hidden'], true)
   deepEqual(closed.props.children[2].props.children, null)
@@ -1377,6 +1378,7 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
     failed: 0,
     foldKey: 'activity:session-growth:1:think-1',
     items: [{ kind: 'reasoning', key: 'think-1:0', text: 'plan' }, { kind: 'tool', key: 'tool-1' }],
+    nodeKeys: ['think-1', 'tool-1'],
     renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
     running: true,
     t: () => '',
@@ -1386,6 +1388,7 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
     rendered = TestRenderer.create(React.createElement(api.activityGroup, baseProps))
   })
   let button = rendered.root.findByType('button')
+  deepEqual(rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-activity': '' }).props['data-dsh-fold-keys'], '["think-1","tool-1"]')
   deepEqual(button.props['aria-expanded'], false)
   deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-1' }).length, 0)
 
@@ -1403,9 +1406,11 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
         { kind: 'reasoning', key: 'think-2:0', text: 'inspect result' },
         { kind: 'tool', key: 'tool-2' },
       ],
+      nodeKeys: ['think-1', 'tool-1', 'think-2', 'tool-2'],
     }))
   })
   button = rendered.root.findByType('button')
+  deepEqual(rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-activity': '' }).props['data-dsh-fold-keys'], '["think-1","tool-1","think-2","tool-2"]')
   deepEqual(button.props['aria-expanded'], true)
   deepEqual(elementText(button.props.children), '2 reasoning steps2 tool calls')
   deepEqual(rendered.root.findAllByProps({ 'data-seat': 'tool-2' }).length, 1)
@@ -1426,6 +1431,7 @@ test('activity groups: expanded context injection uses the native node renderer'
       { kind: 'reasoning', key: 'think:0', text: 'plan' },
       { kind: 'context', key: 'context' },
     ],
+    nodeKeys: ['think', 'context'],
     renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
     running: false,
     t: () => '',
@@ -1452,6 +1458,7 @@ test('activity groups: closing animates before the mounted body is removed', () 
     failed: 0,
     foldKey: 'activity:session-motion:1:tool-1',
     items: [{ kind: 'tool', key: 'tool-1' }, { kind: 'tool', key: 'tool-2' }],
+    nodeKeys: ['tool-1', 'tool-2'],
     renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
     running: false,
     t: () => '',
@@ -1499,6 +1506,7 @@ test('disclosures: expanded bodies release overflow only after motion completes'
         failed: 0,
         foldKey: 'activity:session-overflow:1:tool-1',
         items: [{ kind: 'tool', key: 'tool-1' }, { kind: 'tool', key: 'tool-2' }],
+        nodeKeys: ['tool-1', 'tool-2'],
         renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
         running: false,
         t: () => '',
@@ -1691,6 +1699,46 @@ test('interaction: a selection crossing activity keeps every intersected row ope
     }), api, ChatNodeSeat)
     deepEqual(result.filter((item) => item.kind === 'summary').length, 1)
     deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), fixture.order)
+  })
+})
+
+test('interaction: focus inside an opened activity group survives a streaming regroup', () => {
+  const contextRow = new FakeElement('context')
+  const fakeDocument = {
+    activeElement: null,
+    documentElement: { lang: 'en' },
+    head: { appendChild() {} },
+    getElementById: () => ({}),
+    querySelectorAll: () => [contextRow],
+  }
+  withGlobals({
+    Element: FakeElement,
+    document: fakeDocument,
+    window: { getSelection: () => ({ isCollapsed: true }) },
+  }, () => {
+    const { api, ChatNodeSeat } = buildSandbox()
+    const turn = turnLocation(12, 'open', Date.now() - 2000)
+    const nodes = [
+      { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+      { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'reasoning', text: 'plan' }] } },
+      { key: 'context', kind: 'context', location: { kind: 'step', turn }, data: {} },
+      { key: 'tool', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+    ]
+    const props = {
+      order: nodes.map((node) => node.key),
+      nodeStore: nodeStoreFrom(nodes),
+      timeline: timelineFrom([turn]),
+      sessionId: 'session-streaming-focus',
+    }
+    const initial = classify(api.render(props), api, ChatNodeSeat)
+    const group = initial.find((item) => item.kind === 'activity-group')
+    assert.ok(group)
+    api.activityGroup(group.props).props.children[0].props.onToggle()
+
+    fakeDocument.activeElement = contextRow
+    const updated = classify(api.render(props), api, ChatNodeSeat)
+    deepEqual(updated.filter((item) => item.kind === 'activity-group').length, 1)
+    deepEqual(updated.find((item) => item.kind === 'activity-group').props.nodeKeys, ['think', 'context', 'tool'])
   })
 })
 
