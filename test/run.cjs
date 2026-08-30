@@ -1419,6 +1419,64 @@ test('activity groups: an opened reasoning-and-tool group stays open as more too
   TestRenderer.act(() => rendered.unmount())
 })
 
+test('activity groups: opened context survives leading reasoning and turn completion regrouping', () => {
+  function Seat({ nodeKey }) {
+    return React.createElement('div', { 'data-seat': nodeKey })
+  }
+  const api = buildRuntime(React, reactJsxRuntime)
+  const openTurn = turnLocation(13, 'open', Date.now() - 2000)
+  const closedTurn = turnLocation(13, 'closed', openTurn.start.time, Date.now())
+  function nodesFor(turn, reasoning, complete) {
+    const nodes = [
+      { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+      { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: reasoning ? [{ kind: 'reasoning', text: 'plan' }] : [] } },
+      { key: 'context', kind: 'context', location: { kind: 'step', turn }, data: {} },
+      { key: 'tool', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: {} } },
+      { key: 'answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { blocks: [{ kind: 'text', text: 'done' }], finalNode: { seq: 20 } } },
+    ]
+    if (complete) nodes.push({ key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { closing: { finalNode: { seq: 20 } } } })
+    return nodes
+  }
+  function Chat({ nodes, turn }) {
+    return api.render({
+      order: nodes.map((node) => node.key),
+      nodeStore: nodeStoreFrom(nodes),
+      timeline: timelineFrom([turn]),
+      sessionId: 'session-context-regroup',
+      renderNode: (key) => React.createElement(Seat, { nodeKey: key, key }),
+      t: () => '',
+    })
+  }
+  withGlobals({ matchMedia: () => ({ matches: true }) }, () => {
+    let rendered
+    TestRenderer.act(() => {
+      rendered = TestRenderer.create(React.createElement(Chat, { nodes: nodesFor(openTurn, false, false), turn: openTurn }))
+    })
+    let activity = rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-activity': '' })
+    deepEqual(activity.props['data-dsh-fold-keys'], '["context","tool"]')
+    TestRenderer.act(() => activity.findByType('button').props.onClick())
+    deepEqual(rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-activity': '' }).props['data-ch4acko3-dsh-turn-fold-activity-open'], 'true')
+
+    TestRenderer.act(() => {
+      rendered.update(React.createElement(Chat, { nodes: nodesFor(openTurn, true, false), turn: openTurn }))
+    })
+    activity = rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-activity': '' })
+    deepEqual(activity.props['data-dsh-fold-keys'], '["think","context","tool"]')
+    deepEqual(activity.props['data-ch4acko3-dsh-turn-fold-activity-open'], 'true')
+
+    TestRenderer.act(() => {
+      rendered.update(React.createElement(Chat, { nodes: nodesFor(closedTurn, true, true), turn: closedTurn }))
+    })
+    const turnFold = rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold': '' })
+    deepEqual(turnFold.props['data-ch4acko3-dsh-turn-fold-open'], 'false')
+    TestRenderer.act(() => turnFold.findByType('button').props.onClick())
+    activity = rendered.root.findByProps({ 'data-ch4acko3-dsh-turn-fold-activity': '' })
+    deepEqual(activity.props['data-dsh-fold-keys'], '["think","context","tool"]')
+    deepEqual(activity.props['data-ch4acko3-dsh-turn-fold-activity-open'], 'true')
+    TestRenderer.act(() => rendered.unmount())
+  })
+})
+
 test('activity groups: expanded context injection uses the native node renderer', () => {
   function Seat({ nodeKey }) {
     return React.createElement('div', { 'data-seat': nodeKey })

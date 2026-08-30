@@ -872,7 +872,18 @@ function __ch4acko3DshTurnFoldRenderEntries(entries, nodeStore, renderNode, sess
       activityEntries.push(next);
       j++;
     }
-    var foldKey = "activity:" + String(sessionId) + ":" + String(turn) + ":" + String(entry.key);
+    var foldKeyPrefix = "activity:" + String(sessionId) + ":" + String(turn) + ":";
+    var foldKey = foldKeyPrefix + String(entry.key);
+    // Preserve an open group's identity when earlier activity joins it during streaming.
+    if (!__ch4acko3DshTurnFoldOpenKeys.has(foldKey)) {
+      for (var foldKeyIndex = 1; foldKeyIndex < activityEntries.length; foldKeyIndex++) {
+        var openFoldKey = foldKeyPrefix + String(activityEntries[foldKeyIndex].key);
+        if (__ch4acko3DshTurnFoldOpenKeys.has(openFoldKey)) {
+          foldKey = openFoldKey;
+          break;
+        }
+      }
+    }
     // Focus inside an already-open group belongs to its native disclosure rows.
     // Keep their parent stable when a streaming Session snapshot renders again.
     var selected = !__ch4acko3DshTurnFoldOpenKeys.has(foldKey) && activityEntries.some(function (activityEntry) { return interactionKeys.has(activityEntry.key); });
