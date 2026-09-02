@@ -77,7 +77,7 @@ test('target: installed DSH stays inside the bounded Patch compatibility range',
   assert.ok(semver.satisfies(manifest.version, PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(semver.satisfies('0.1.0-rc.8', PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(semver.satisfies('0.1.1-rc.2', PATCHES[0].target.version, { includePrerelease: true }))
-  assert.ok(!semver.satisfies('0.2.0-rc.1', PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.1.1-rc.3', PATCHES[0].target.version, { includePrerelease: true }))
   deepEqual(PATCHES[1].target.version, PATCHES[0].target.version)
 })
 
@@ -104,15 +104,20 @@ test('release: npm publication gates an idempotent GitHub Release', () => {
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {
-    '@deepseek-ai/dsh-client-ui-conversation': '^0.1.0-rc.8 || ^0.1.1-0',
-    '@deepseek-ai/dsh-settings': '^0.1.0-rc.8 || ^0.1.1-0',
-    'dsh-harmony': '^0.7.0 || ^0.8.0',
+    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2',
+    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2',
+    'dsh-harmony': '^0.8.10',
   })
-  assert.ok(semver.satisfies('0.1.0-rc.8', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation']))
-  assert.ok(semver.satisfies('0.1.1-rc.2', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation']))
-  assert.ok(!semver.satisfies('0.2.0', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation']))
-  assert.ok(semver.satisfies('0.7.0', MANIFEST.peerDependencies['dsh-harmony']))
-  assert.ok(semver.satisfies('0.8.0', MANIFEST.peerDependencies['dsh-harmony']))
+  deepEqual(MANIFEST.peerDependenciesMeta, {
+    '@deepseek-ai/dsh-client-ui-conversation': { optional: true },
+    '@deepseek-ai/dsh-settings': { optional: true },
+    'dsh-harmony': { optional: true },
+  })
+  assert.ok(semver.satisfies('0.1.0-rc.8', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.1-rc.2', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.1.1-rc.3', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.8.9', MANIFEST.peerDependencies['dsh-harmony']))
+  assert.ok(semver.satisfies('0.8.10', MANIFEST.peerDependencies['dsh-harmony']))
   assert.ok(!semver.satisfies('0.9.0', MANIFEST.peerDependencies['dsh-harmony']))
   const hostConfig = require(path.join(ROOT, 'index.cjs')).Config
   deepEqual(hostConfig({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })

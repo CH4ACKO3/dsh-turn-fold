@@ -36,10 +36,9 @@ short open/close transition that unmounts the activity after it closes.
 
 Three shape-guarded Source Patches run in memory against the compiled browser
 bundle of `@deepseek-ai/dsh-client-ui-conversation` (`lib/client.js`) from
-`0.1.0-rc.8` up to, but not including, the `0.2.0` prerelease line; installed
-DSH files are never modified. Every selector must still match exactly once, so
-an incompatible compiled shape fails closed instead of modifying an uncertain
-target.
+`0.1.0-rc.8` through `0.1.1-rc.2`; installed DSH files are never modified.
+Every selector must still match exactly once, so an incompatible compiled shape
+fails closed instead of modifying an uncertain target.
 
 | Patch | Selector (expect 1) | Effect |
 | --- | --- | --- |

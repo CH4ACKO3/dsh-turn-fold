@@ -4,15 +4,6 @@
 // bundle of @deepseek-ai/dsh-client-ui-conversation (lib/client.js). They never
 // modify the installed package.
 //
-//   1. inject-turn-fold-runtime  — injects the fold renderer + disclosure UI
-//      into the module factory, immediately before the ChatView component.
-//   2. rewrite-node-render-loop   — replaces the `order.map(...)` node render
-//      loop with a call to the injected renderer, which groups a completed
-//      turn's agent activity into a collapsible disclosure while keeping the
-//      final answer (turn-tail.closing.finalNode) and the turn tail visible.
-//   3. install-turn-fold-services — registers the plugin's native DSH locale
-//      namespace and binds its native settings scope during conversation boot.
-//
 // All three selectors use an exact `expect: 1` inside a bounded target-version
 // range, so a compiled-shape drift still fails loudly in `dsh harmony status`.
 
@@ -20,7 +11,7 @@ const INLINE = require('./inline-source.cjs')
 
 const TARGET = {
   package: '@deepseek-ai/dsh-client-ui-conversation',
-  version: '>=0.1.0-rc.8 <0.2.0-0',
+  version: '>=0.1.0-rc.8 <=0.1.1-rc.2',
   file: 'lib/client.js',
 }
 
