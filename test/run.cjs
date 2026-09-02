@@ -14,11 +14,15 @@ const TestRenderer = require('react-test-renderer')
 const ROOT = path.join(__dirname, '..')
 const INLINE = require(path.join(ROOT, 'inline-source.cjs'))
 const PATCHES = require(path.join(ROOT, 'patch.cjs'))
+const LEGACY_PATCHES = PATCHES.createPatches('0.1.1-rc.2')
+const DSH_012_PATCHES = PATCHES.createPatches('0.1.2-alpha.5')
 const LOCALES = require(path.join(ROOT, 'locales.cjs'))
 const { DEFAULT_SUMMARY_FIELDS, SUMMARY_FIELDS } = require(path.join(ROOT, 'settings.cjs'))
 const TARGET_PACKAGE = require.resolve('@deepseek-ai/dsh-client-ui-conversation/package.json', { paths: [ROOT] })
 const TARGET_ROOT = path.dirname(TARGET_PACKAGE)
 const TARGET_PATH = path.join(TARGET_ROOT, 'lib/client.js')
+const DSH_012_PACKAGE = require.resolve('@deepseek-ai/dsh-client-ui-chat/package.json', { paths: [ROOT] })
+const DSH_012_PATH = path.join(path.dirname(DSH_012_PACKAGE), 'lib/client.js')
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const LOCKFILE = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'))
 
@@ -48,8 +52,8 @@ function sourceFile(name, source) {
   return ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
 }
 
-function applyPatch(source, patch) {
-  const sf = sourceFile(TARGET_PATH, source)
+function applyPatch(source, patch, targetPath = TARGET_PATH) {
+  const sf = sourceFile(targetPath, source)
   const nodes = tsquery(sf, patch.select)
   deepEqual(nodes.length, patch.expect, `${patch.id}: expected ${patch.expect} selector match, got ${nodes.length}`)
   const edits = []
@@ -74,11 +78,15 @@ function applyPatch(source, patch) {
 
 test('target: installed DSH stays inside the bounded Patch compatibility range', () => {
   const manifest = JSON.parse(fs.readFileSync(TARGET_PACKAGE, 'utf8'))
-  assert.ok(semver.satisfies(manifest.version, PATCHES[0].target.version, { includePrerelease: true }))
-  assert.ok(semver.satisfies('0.1.0-rc.8', PATCHES[0].target.version, { includePrerelease: true }))
-  assert.ok(semver.satisfies('0.1.1-rc.2', PATCHES[0].target.version, { includePrerelease: true }))
-  assert.ok(!semver.satisfies('0.1.1-rc.3', PATCHES[0].target.version, { includePrerelease: true }))
-  deepEqual(PATCHES[1].target.version, PATCHES[0].target.version)
+  assert.ok(semver.satisfies(manifest.version, LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.0-rc.8', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.1-rc.2', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.1.1-rc.3', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.2-alpha.5', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.1.3-alpha.1', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+  deepEqual(LEGACY_PATCHES[0].target.package, '@deepseek-ai/dsh-client-ui-conversation')
+  deepEqual(DSH_012_PATCHES[0].target.package, '@deepseek-ai/dsh-client-ui-chat')
+  deepEqual(PATCHES.createPatches('0.1.3-alpha.1')[0].target.package, '@deepseek-ai/dsh-client-ui-chat')
 })
 
 test('provider: scoped package name matches the DSH bundle registration', () => {
@@ -104,17 +112,20 @@ test('release: npm publication gates an idempotent GitHub Release', () => {
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {
-    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2',
-    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2',
+    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0',
+    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0',
+    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0',
     'dsh-harmony': '^0.8.10',
   })
   deepEqual(MANIFEST.peerDependenciesMeta, {
+    '@deepseek-ai/dsh-client-ui-chat': { optional: true },
     '@deepseek-ai/dsh-client-ui-conversation': { optional: true },
     '@deepseek-ai/dsh-settings': { optional: true },
     'dsh-harmony': { optional: true },
   })
   assert.ok(semver.satisfies('0.1.0-rc.8', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
   assert.ok(semver.satisfies('0.1.1-rc.2', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.1.2-alpha.5', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.1.1-rc.3', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.8.9', MANIFEST.peerDependencies['dsh-harmony']))
   assert.ok(semver.satisfies('0.8.10', MANIFEST.peerDependencies['dsh-harmony']))
@@ -185,7 +196,7 @@ test('locale files: native zh and en dictionaries have the same non-empty key se
 })
 
 test('provider: every Source Patch has an exact selector contract', () => {
-  for (const patch of PATCHES) {
+  for (const patch of [...LEGACY_PATCHES, ...DSH_012_PATCHES]) {
     assert.ok(typeof patch.description === 'string' && patch.description.length > 0, `${patch.id}: description must explain the Patch`)
     deepEqual(patch.expect, 1, `${patch.id}: expect must stay exact`)
     deepEqual(patch.target.file, 'lib/client.js', `${patch.id}: target must use the Harmony file contract`)
@@ -196,11 +207,16 @@ test('provider: every Source Patch has an exact selector contract', () => {
 
 const targetSource = fs.readFileSync(TARGET_PATH, 'utf8')
 let transformedSource = targetSource
-for (const patch of PATCHES) transformedSource = applyPatch(transformedSource, patch)
+for (const patch of LEGACY_PATCHES) transformedSource = applyPatch(transformedSource, patch)
+const dsh012TargetSource = fs.readFileSync(DSH_012_PATH, 'utf8')
+let dsh012TransformedSource = dsh012TargetSource
+for (const patch of DSH_012_PATCHES) dsh012TransformedSource = applyPatch(dsh012TransformedSource, patch, DSH_012_PATH)
 
 test('selectors: injected runtime does not re-match the render-loop selector', () => {
-  const nodes = tsquery(sourceFile('inline.js', INLINE), PATCHES[1].select)
-  deepEqual(nodes.length, 0)
+  for (const patch of [LEGACY_PATCHES[1], DSH_012_PATCHES[1]]) {
+    const nodes = tsquery(sourceFile('inline.js', INLINE), patch.select)
+    deepEqual(nodes.length, 0)
+  }
 })
 
 test('runtime: internal code and DOM identifiers are scoped to the package owner', () => {
@@ -217,6 +233,14 @@ test('transform: final browser bundle parses without syntax errors', () => {
   assert.match(transformedSource, /const t = ctx\.locale\.bind\(NS\);\s+__ch4acko3DshTurnFoldInstall\(ctx\);/)
 })
 
+test('transform: DSH 0.1.2 chat bundle uses the new renderer seam and parses', () => {
+  const sf = sourceFile('client-012.patched.js', dsh012TransformedSource)
+  deepEqual(sf.parseDiagnostics.length, 0)
+  assert.match(dsh012TransformedSource, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId, renderNode: \(nodeKey\) =>/)
+  assert.match(dsh012TransformedSource, /ChatNodeSeat, \{ \.\.\.\(\{/)
+  assert.match(dsh012TransformedSource, /const t = ctx\.locale\.bind\(NS\);\s+__ch4acko3DshTurnFoldInstall\(ctx\);/)
+})
+
 test('target: closing-reasoning extraction stays bound to the native semantic row contract', () => {
   assert.match(targetSource, /function ReasoningRow\(/)
   assert.match(targetSource, /"data-variant": "think"/)
@@ -229,7 +253,7 @@ test('transform: preserves an earlier Patch extension inside the native node ren
   const extended = `${original.split('\n')[0]}\n\t\t\t\t\t\t\t\tthirdPartyCompatibilityMarker,\n\t\t\t\t\t\t\t\trenderSlot,`
   assert.ok(targetSource.includes(original), 'published node renderer shape changed')
   let composed = targetSource.replace(original, extended)
-  for (const patch of PATCHES) composed = applyPatch(composed, patch)
+  for (const patch of LEGACY_PATCHES) composed = applyPatch(composed, patch)
   assert.match(composed, /renderNode: \(nodeKey\) =>/)
   assert.match(composed, /thirdPartyCompatibilityMarker/)
 })
@@ -242,7 +266,7 @@ test('transform: runtime injection accepts a ChatView decorated by an earlier Co
     + `const ChatView = decorate(${targetSource.slice(chatView.getStart(sf), chatView.getEnd())});`
     + targetSource.slice(chatView.getEnd())
   let composed = decorated
-  for (const patch of PATCHES) composed = applyPatch(composed, patch)
+  for (const patch of LEGACY_PATCHES) composed = applyPatch(composed, patch)
   deepEqual(sourceFile('client.decorated.patched.js', composed).parseDiagnostics.length, 0)
   assert.match(composed, /__ch4acko3DshTurnFoldLocaleNamespace[\s\S]+const ChatView = decorate\(function ChatView/)
   assert.match(composed, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId, renderNode:/)

@@ -16,12 +16,12 @@ https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 
 ## 工作原理
 
-三个带形状校验的 Source Patch 会在内存中修改 `@deepseek-ai/dsh-client-ui-conversation` 从 DSH `0.1.0-rc.8` 至 `0.1.1-rc.2` 的编译后浏览器包（`lib/client.js`），不会修改已安装的 DSH 文件。每条选择器仍必须恰好命中一次，因此遇到不兼容的编译形状时会停止应用，而不会修改不确定的目标。
+三个带形状校验的 Source Patch 会在内存中修改编译后的浏览器包：DSH `0.1.0-rc.8` 至 `0.1.1-rc.2` 使用 `@deepseek-ai/dsh-client-ui-conversation`，DSH `0.1.2-alpha.5` 至整个 `0.1.2` 版本线则跟随渲染器迁移到 `@deepseek-ai/dsh-client-ui-chat`。它们不会修改已安装的 DSH 文件。每条选择器仍必须恰好命中一次，因此遇到不兼容的编译形状时会停止应用，而不会修改不确定的目标。
 
 | Patch | 选择器（预期命中 1 次） | 作用 |
 | --- | --- | --- |
 | `inject-turn-fold-runtime` | `FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])` | 向原生或已装饰的 `ChatView` 注入折叠渲染器和折叠 UI |
-| `rewrite-node-render-loop` | `CallExpression[expression.name.name="map"][expression.expression.name="order"]` | 将 `order.map(...)` 节点循环替换为按回合渲染器 |
+| `rewrite-node-render-loop` | 旧版 `order.map(...)` / 0.1.2 `ChatNodeList` 调用 | 将对应版本的原生节点列表接缝替换为按回合渲染器 |
 | `install-turn-fold-services` | `VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])` | 通过 DSH 原生语言服务注册内置的中英文词典，并绑定原生设置作用域 |
 
 ## 安装
@@ -37,7 +37,7 @@ dsh harmony status --profile web   # 三个 Patch 都必须为 `bound`
 node test/run.cjs
 ```
 
-`npm install` 会安装测试工具所需的依赖。测试套件会在内存中应用三个 Patch、解析最终浏览器包，并覆盖已完成回合、分段活动、结束后活动、部分历史、失败、中断、进行中、无障碍、本地化、设置和状态保留等行为。目标缺失或选择器不匹配会使测试失败，不会被报告为跳过后通过。
+`npm install` 会安装测试工具所需的依赖。测试套件会对两种受支持的编译形状分别在内存中应用三个 Patch、解析最终浏览器包，并覆盖已完成回合、分段活动、结束后活动、部分历史、失败、中断、进行中、无障碍、本地化、设置和状态保留等行为。目标缺失或选择器不匹配会使测试失败，不会被报告为跳过后通过。
 
 ## CI 与发布
 

@@ -1,37 +1,87 @@
-// @ch4acko3/dsh-turn-fold — Harmony Source Patches for the DSH conversation chat flow.
+// @ch4acko3/dsh-turn-fold — Harmony Source Patches for the DSH chat flow.
 //
-// These three patches run in order, in memory only, against the compiled browser
-// bundle of @deepseek-ai/dsh-client-ui-conversation (lib/client.js). They never
-// modify the installed package.
-//
-// All three selectors use an exact `expect: 1` inside a bounded target-version
-// range, so a compiled-shape drift still fails loudly in `dsh harmony status`.
+// DSH 0.1.2 split the visual chat renderer out of ui-conversation and into
+// ui-chat. Keep the old compiled shape bounded through 0.1.1-rc.2, then select
+// the new target and render seam for the 0.1.2 line.
 
+const fs = require('node:fs')
+const path = require('node:path')
+const { createRequire, findPackageJSON } = require('node:module')
+const { pathToFileURL } = require('node:url')
 const INLINE = require('./inline-source.cjs')
 
-const TARGET = {
-  package: '@deepseek-ai/dsh-client-ui-conversation',
-  version: '>=0.1.0-rc.8 <=0.1.1-rc.2',
-  file: 'lib/client.js',
+const LEGACY_RANGE = '>=0.1.0-rc.8 <=0.1.1-rc.2'
+const DSH_012_RANGE = '>=0.1.2-alpha.5 <0.1.3-0'
+
+function manifestVersion(filename) {
+  return JSON.parse(fs.readFileSync(filename, 'utf8')).version
 }
 
-module.exports = [
-  {
-    id: 'inject-turn-fold-runtime',
-    description: 'Provides the Turn Fold rendering, disclosure, metrics, settings, and locale runtime used by ChatView.',
-    target: TARGET,
-    select: 'FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])',
-    expect: 1,
-    apply({ node, sourceFile, edit }) {
-      edit.prependLeft(node.getStart(sourceFile), INLINE + '\n\n')
+function activeDshVersion() {
+  const entry = process.env.DSH_HARMONY_ACTIVE_DSH_ENTRY ?? process.env.DSH_HARMONY_DSH_ENTRY
+  if (entry !== undefined && typeof findPackageJSON === 'function') {
+    const manifest = findPackageJSON('@deepseek-ai/dsh', pathToFileURL(path.resolve(entry)))
+    if (manifest !== undefined) return manifestVersion(manifest)
+  }
+
+  const localRequire = createRequire(__filename)
+  try {
+    return manifestVersion(localRequire.resolve('@deepseek-ai/dsh/package.json'))
+  } catch {}
+  try {
+    return manifestVersion(localRequire.resolve('@deepseek-ai/dsh-client-ui-conversation/package.json'))
+  } catch {}
+  throw new Error('@ch4acko3/dsh-turn-fold: cannot determine the active DSH version')
+}
+
+function usesUiChat(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version)
+  if (match === null) throw new Error(`@ch4acko3/dsh-turn-fold: invalid DSH version ${JSON.stringify(version)}`)
+  const [major, minor, patch] = match.slice(1).map(Number)
+  return major > 0 || minor > 1 || (minor === 1 && patch >= 2)
+}
+
+function target(packageName, version) {
+  return { package: packageName, version, file: 'lib/client.js' }
+}
+
+function commonPatches(targetSpec, rewrite) {
+  return [
+    {
+      id: 'inject-turn-fold-runtime',
+      description: 'Provides the Turn Fold rendering, disclosure, metrics, settings, and locale runtime used by ChatView.',
+      target: targetSpec,
+      select: 'FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])',
+      expect: 1,
+      apply({ node, sourceFile, edit }) {
+        edit.prependLeft(node.getStart(sourceFile), INLINE + '\n\n')
+      },
     },
-  },
-  {
-    id: 'rewrite-node-render-loop',
-    description: 'Routes ChatView node rendering through Turn Fold while preserving the native node renderer.',
-    target: TARGET,
+    {
+      id: 'rewrite-node-render-loop',
+      description: 'Routes ChatView node rendering through Turn Fold while preserving the native node renderer.',
+      target: targetSpec,
+      select: rewrite.select,
+      expect: 1,
+      apply: rewrite.apply,
+    },
+    {
+      id: 'install-turn-fold-services',
+      description: 'Registers Turn Fold locales and connects its settings when the chat UI starts.',
+      target: targetSpec,
+      select: 'VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])',
+      expect: 1,
+      apply({ node, sourceFile, edit }) {
+        const statement = sourceFile.text.slice(node.getStart(sourceFile), node.getEnd())
+        edit.overwrite(node.getStart(sourceFile), node.getEnd(), `${statement}\n\t\t\t__ch4acko3DshTurnFoldInstall(ctx);`)
+      },
+    },
+  ]
+}
+
+function legacyPatches() {
+  return commonPatches(target('@deepseek-ai/dsh-client-ui-conversation', LEGACY_RANGE), {
     select: 'CallExpression[expression.name.name="map"][expression.expression.name="order"]',
-    expect: 1,
     apply({ node, sourceFile, edit }) {
       const callback = node.arguments[0]
       if (callback === undefined) throw new Error('@ch4acko3/dsh-turn-fold: order.map callback is missing')
@@ -42,20 +92,36 @@ module.exports = [
         `__ch4acko3DshTurnFoldRender({ order, nodeStore, timeline, sessionId, renderNode: ${renderNode}, t })`
       )
     },
-  },
-  {
-    id: 'install-turn-fold-services',
-    description: 'Registers Turn Fold locales and connects its settings when the conversation UI starts.',
-    target: TARGET,
-    select: 'VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])',
-    expect: 1,
+  })
+}
+
+function dsh012Patches() {
+  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', DSH_012_RANGE), {
+    select: 'CallExpression[arguments.0.name="ChatNodeList"]',
     apply({ node, sourceFile, edit }) {
-      const statement = sourceFile.text.slice(node.getStart(sourceFile), node.getEnd())
+      const props = node.arguments[1]
+      if (props === undefined) throw new Error('@ch4acko3/dsh-turn-fold: ChatNodeList props are missing')
+      const jsx = sourceFile.text.slice(node.expression.getStart(sourceFile), node.expression.getEnd())
+      const nativeProps = sourceFile.text.slice(props.getStart(sourceFile), props.getEnd())
       edit.overwrite(
         node.getStart(sourceFile),
         node.getEnd(),
-        `${statement}\n\t\t\t__ch4acko3DshTurnFoldInstall(ctx);`
+        `__ch4acko3DshTurnFoldRender({ order, nodeStore, timeline, sessionId, renderNode: (nodeKey) => ${jsx}(ChatNodeSeat, { ...(${nativeProps}), nodeKey }, nodeKey), t })`
       )
     },
-  },
-]
+  })
+}
+
+function createPatches(version) {
+  return usesUiChat(version) ? dsh012Patches() : legacyPatches()
+}
+
+const patches = createPatches(activeDshVersion())
+Object.defineProperties(patches, {
+  createPatches: { value: createPatches },
+  activeDshVersion: { value: activeDshVersion },
+  LEGACY_RANGE: { value: LEGACY_RANGE },
+  DSH_012_RANGE: { value: DSH_012_RANGE },
+})
+
+module.exports = patches

@@ -35,15 +35,17 @@ short open/close transition that unmounts the activity after it closes.
 ## How it works
 
 Three shape-guarded Source Patches run in memory against the compiled browser
-bundle of `@deepseek-ai/dsh-client-ui-conversation` (`lib/client.js`) from
-`0.1.0-rc.8` through `0.1.1-rc.2`; installed DSH files are never modified.
-Every selector must still match exactly once, so an incompatible compiled shape
-fails closed instead of modifying an uncertain target.
+bundle. For DSH `0.1.0-rc.8` through `0.1.1-rc.2`, they target
+`@deepseek-ai/dsh-client-ui-conversation`; for DSH `0.1.2-alpha.5` through the
+`0.1.2` line, they follow the renderer into `@deepseek-ai/dsh-client-ui-chat`.
+Installed DSH files are never modified. Every selector must still match exactly
+once, so an incompatible compiled shape fails closed instead of modifying an
+uncertain target.
 
 | Patch | Selector (expect 1) | Effect |
 | --- | --- | --- |
 | `inject-turn-fold-runtime` | `FunctionDeclaration[name.name="ChatView"], VariableStatement:has(VariableDeclaration[name.name="ChatView"])` | Injects the fold renderer + disclosure UI into either native or decorated `ChatView` |
-| `rewrite-node-render-loop` | `CallExpression[expression.name.name="map"][expression.expression.name="order"]` | Replaces the `order.map(...)` node loop with the per-turn renderer |
+| `rewrite-node-render-loop` | legacy `order.map(...)` / 0.1.2 `ChatNodeList` call | Replaces the version-specific native node-list seam with the per-turn renderer |
 | `install-turn-fold-services` | `VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])` | Registers the bundled English and Chinese dictionaries through DSH's native locale service and binds the native settings scope |
 
 ## Install
@@ -60,7 +62,7 @@ node test/run.cjs
 ```
 
 `npm install` installs the dependencies required by the test harness. The test
-suite applies all three patches in memory, parses the final browser bundle, and
+suite applies all three patches to both supported compiled shapes in memory, parses the final browser bundles, and
 covers completed, split-activity, post-closing, partial-history, failed,
 interrupted, open, accessibility, localization, settings, and state-retention
 behavior. A missing target or selector mismatch fails the test; it is never
