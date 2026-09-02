@@ -1784,6 +1784,97 @@ test('interaction: a selection crossing activity keeps every intersected row ope
   })
 })
 
+test('interaction: selecting visible context inside an open turn keeps the turn disclosure mounted', () => {
+  const contextRow = new FakeElement('context')
+  const selection = {
+    isCollapsed: true,
+    rangeCount: 0,
+    getRangeAt() {
+      return { intersectsNode: (node) => node === contextRow }
+    },
+  }
+  withGlobals({
+    Element: FakeElement,
+    document: {
+      activeElement: null,
+      documentElement: { lang: 'en' },
+      head: { appendChild() {} },
+      getElementById: () => ({}),
+      querySelectorAll: () => [contextRow],
+    },
+    window: { getSelection: () => selection },
+  }, () => {
+    const { api, ChatNodeSeat } = buildSandbox()
+    const turn = turnLocation(13, 'closed', 1000, 5000)
+    const nodes = [
+      { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+      { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 1, blocks: [{ kind: 'reasoning', text: 'plan' }], finalNode: { seq: 10 } } },
+      { key: 'context', kind: 'context', location: { kind: 'step', turn }, data: { content: [{ type: 'text', text: 'visible context' }] } },
+      { key: 'answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 2, blocks: [{ kind: 'text', text: 'done' }], finalNode: { seq: 20 } } },
+      { key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { closing: { finalNode: { seq: 20 } } } },
+    ]
+    const props = {
+      order: nodes.map((node) => node.key),
+      nodeStore: nodeStoreFrom(nodes),
+      timeline: timelineFrom([turn]),
+      sessionId: 'session-visible-context-selection',
+    }
+    const initial = api.render(props)
+    const disclosureElement = initial.find((element) => element.type === api.disclosure)
+    assert.ok(disclosureElement)
+    api.disclosure(disclosureElement.props).props.children[0].props.onClick()
+
+    selection.isCollapsed = false
+    selection.rangeCount = 1
+    const updated = classify(api.render(props), api, ChatNodeSeat)
+    deepEqual(updated.filter((item) => item.kind === 'disclosure').length, 1)
+    deepEqual(updated.filter((item) => item.kind === 'summary').length, 0)
+    const remounted = api.disclosure(updated.find((item) => item.kind === 'disclosure').props)
+    deepEqual(remounted.props.children[0].props['aria-expanded'], true)
+  })
+})
+
+test('interaction: selecting a promoted image result does not unfold its completed turn', () => {
+  const imageRow = new FakeElement('tool-img')
+  const selection = {
+    isCollapsed: false,
+    rangeCount: 1,
+    getRangeAt() {
+      return { intersectsNode: (node) => node === imageRow }
+    },
+  }
+  withGlobals({
+    Element: FakeElement,
+    document: {
+      activeElement: null,
+      documentElement: { lang: 'en' },
+      head: { appendChild() {} },
+      getElementById: () => ({}),
+      querySelectorAll: () => [imageRow],
+    },
+    window: { getSelection: () => selection },
+  }, () => {
+    const { api, ChatNodeSeat } = buildSandbox()
+    const turn = turnLocation(14, 'closed', 1000, 5000)
+    const nodes = [
+      { key: 'user', kind: 'user', location: { kind: 'session' }, data: {} },
+      { key: 'think', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 1, blocks: [{ kind: 'reasoning', text: 'plan' }], finalNode: { seq: 10 } } },
+      { key: 'tool-img', kind: 'tool-call', location: { kind: 'step', turn }, data: { root: { kind: 'tool-result', content: [{ type: 'text', text: 'visible image result' }, { type: 'image', attachment: { id: 'a' } }] } } },
+      { key: 'answer', kind: 'assistant-step', location: { kind: 'step', turn }, data: { step: 2, blocks: [{ kind: 'text', text: 'done' }], finalNode: { seq: 20 } } },
+      { key: 'tail', kind: 'turn-tail', location: { kind: 'turn', turn }, data: { closing: { finalNode: { seq: 20 } } } },
+    ]
+    const result = classify(api.render({
+      order: nodes.map((node) => node.key),
+      nodeStore: nodeStoreFrom(nodes),
+      timeline: timelineFrom([turn]),
+      sessionId: 'session-promoted-image-selection',
+    }), api, ChatNodeSeat)
+    deepEqual(result.filter((item) => item.kind === 'disclosure').length, 1)
+    deepEqual(result.filter((item) => item.kind === 'summary').length, 0)
+    deepEqual(result.filter((item) => item.kind === 'seat').map((item) => item.nodeKey), ['user', 'tool-img', 'answer', 'tail'])
+  })
+})
+
 test('interaction: focus inside an opened activity group survives a streaming regroup', () => {
   const contextRow = new FakeElement('context')
   const fakeDocument = {

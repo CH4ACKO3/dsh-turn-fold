@@ -1207,7 +1207,14 @@ function __ch4acko3DshTurnFoldRender(props) {
     loc = node.location;
     var isTurn = loc !== void 0 && (loc.kind === "turn" || loc.kind === "step");
     plan = isTurn ? plans.get(loc.turn.turn) : void 0;
-    var foldable = plan !== void 0 && plan.status === "closed" && (plan.endReason === "completed" || plan.endReason === "aborted" || plan.endReason === "interrupted") && !plan.hasError && !plan.branchUnavailable && !plan.hasAfterClosing && plan.closingKey !== void 0 && (plan.activity.length > 0 || plan.closingReasoning.length > 0) && !plan.activity.some(function (activityKey) { return interactionKeys.has(activityKey); });
+    var turnFoldKey = plan === void 0 ? null : String(sessionId) + ":" + plan.turn;
+    // Preserve an in-progress selection only when folding would newly hide one
+    // of its rows. Text already visible inside an open disclosure, or promoted
+    // image results that stay outside it, must not dismantle the fold on rerender.
+    var interactionBlocksFold = plan !== void 0 && turnFoldKey !== null && !__ch4acko3DshTurnFoldOpenKeys.has(turnFoldKey) && plan.activity.some(function (activityKey) {
+      return interactionKeys.has(activityKey) && !__ch4acko3DshTurnFoldIsPromotableImageResult(nodeStore.get(activityKey));
+    });
+    var foldable = plan !== void 0 && plan.status === "closed" && (plan.endReason === "completed" || plan.endReason === "aborted" || plan.endReason === "interrupted") && !plan.hasError && !plan.branchUnavailable && !plan.hasAfterClosing && plan.closingKey !== void 0 && (plan.activity.length > 0 || plan.closingReasoning.length > 0) && !interactionBlocksFold;
     if (foldable && FOLD_KINDS[node.kind] === true && key !== plan.closingKey) continue;
     var summaryAnchor = plan === void 0 ? void 0 : plan.closingKey !== void 0 && (plan.firstActivityOrder < 0 || plan.closingOrder < plan.firstActivityOrder) ? plan.closingKey : plan.activity[0];
     if (plan !== void 0 && !foldable && summaryAnchor !== void 0 && key === summaryAnchor) {
@@ -1232,7 +1239,7 @@ function __ch4acko3DshTurnFoldRender(props) {
         orderPositions: orderPositions,
         sessionId: sessionId,
         termination: plan.endReason === "aborted" || plan.endReason === "interrupted" ? plan.endReason : void 0,
-        foldKey: String(sessionId) + ":" + plan.turn,
+        foldKey: turnFoldKey,
         renderNode: renderNode,
         t: props.t
       }, "ch4acko3-dsh-turn-fold-" + String(sessionId) + "-" + plan.turn) });
