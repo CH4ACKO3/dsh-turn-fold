@@ -83,7 +83,11 @@ test('target: installed DSH stays inside the bounded Patch compatibility range',
   assert.ok(semver.satisfies('0.1.1-rc.2', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.1.1-rc.3', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(semver.satisfies('0.1.2-alpha.5', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
-  assert.ok(!semver.satisfies('0.1.3-alpha.1', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(!semver.satisfies('0.1.7-alpha.1', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+  for (const version of ['0.1.5-rc.2', '0.1.6-alpha.2']) {
+    assert.ok(semver.satisfies(version, DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+    assert.ok(semver.satisfies(version, MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-chat']))
+  }
   deepEqual(LEGACY_PATCHES[0].target.package, '@deepseek-ai/dsh-client-ui-conversation')
   deepEqual(DSH_012_PATCHES[0].target.package, '@deepseek-ai/dsh-client-ui-chat')
   deepEqual(PATCHES.createPatches('0.1.3-alpha.1')[0].target.package, '@deepseek-ai/dsh-client-ui-chat')
@@ -112,10 +116,10 @@ test('release: npm publication gates an idempotent GitHub Release', () => {
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {
-    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0',
-    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0',
-    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0',
-    'dsh-harmony': '^0.8.10',
+    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0',
+    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0',
+    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0',
+    'dsh-harmony': '^0.8.11',
   })
   deepEqual(MANIFEST.peerDependenciesMeta, {
     '@deepseek-ai/dsh-client-ui-chat': { optional: true },
@@ -128,7 +132,7 @@ test('provider: native settings schema exposes every summary metric with the int
   assert.ok(semver.satisfies('0.1.2-alpha.5', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.1.1-rc.3', MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-conversation'], { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.8.9', MANIFEST.peerDependencies['dsh-harmony']))
-  assert.ok(semver.satisfies('0.8.10', MANIFEST.peerDependencies['dsh-harmony']))
+  assert.ok(semver.satisfies('0.8.11', MANIFEST.peerDependencies['dsh-harmony']))
   assert.ok(!semver.satisfies('0.9.0', MANIFEST.peerDependencies['dsh-harmony']))
   const hostConfig = require(path.join(ROOT, 'index.cjs')).Config
   deepEqual(hostConfig({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })

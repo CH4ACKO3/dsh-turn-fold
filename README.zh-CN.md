@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 
 ## 工作原理
 
-三个带形状校验的 Source Patch 会在内存中修改编译后的浏览器包：DSH `0.1.0-rc.8` 至 `0.1.1-rc.2` 使用 `@deepseek-ai/dsh-client-ui-conversation`，DSH `0.1.2-alpha.5` 至整个 `0.1.2` 版本线则跟随渲染器迁移到 `@deepseek-ai/dsh-client-ui-chat`。它们不会修改已安装的 DSH 文件。每条选择器仍必须恰好命中一次，因此遇到不兼容的编译形状时会停止应用，而不会修改不确定的目标。
+三个带形状校验的 Source Patch 会在内存中修改编译后的浏览器包：DSH `0.1.0-rc.8` 至 `0.1.1-rc.2` 使用 `@deepseek-ai/dsh-client-ui-conversation`，DSH `0.1.2-alpha.5` 至 `0.1.6` 版本线（含预发布版）则跟随渲染器迁移到 `@deepseek-ai/dsh-client-ui-chat`。它们不会修改已安装的 DSH 文件。每条选择器仍必须恰好命中一次，因此遇到不兼容的编译形状时会停止应用，而不会修改不确定的目标。
 
 | Patch | 选择器（预期命中 1 次） | 作用 |
 | --- | --- | --- |
@@ -60,3 +60,5 @@ npx npm@^11.15.0 trust github @ch4acko3/dsh-turn-fold \
 npm version patch
 git push --follow-tags
 ```
+
+已使用真实 `0.1.5-rc.2` 和 `0.1.6-alpha.2` 包验证。设置 `DSH_TURN_FOLD_UPSTREAM_ROOT` 指向隔离的 DSH 安装后运行 `npm test`，可对该版本的聊天包执行测试。选择器仍要求精确命中。

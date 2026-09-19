@@ -2,7 +2,7 @@
 //
 // DSH 0.1.2 split the visual chat renderer out of ui-conversation and into
 // ui-chat. Keep the old compiled shape bounded through 0.1.1-rc.2, then select
-// the new target and render seam for the 0.1.2 line.
+// the new target and render seam for the modern chat line.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -11,7 +11,7 @@ const { pathToFileURL } = require('node:url')
 const INLINE = require('./inline-source.cjs')
 
 const LEGACY_RANGE = '>=0.1.0-rc.8 <=0.1.1-rc.2'
-const DSH_012_RANGE = '>=0.1.2-alpha.5 <0.1.3-0'
+const DSH_MODERN_RANGE = '>=0.1.2-alpha.5 <0.1.7-0'
 
 function manifestVersion(filename) {
   return JSON.parse(fs.readFileSync(filename, 'utf8')).version
@@ -96,7 +96,7 @@ function legacyPatches() {
 }
 
 function dsh012Patches() {
-  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', DSH_012_RANGE), {
+  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', DSH_MODERN_RANGE), {
     select: 'CallExpression[arguments.0.name="ChatNodeList"]',
     apply({ node, sourceFile, edit }) {
       const props = node.arguments[1]
@@ -121,7 +121,7 @@ Object.defineProperties(patches, {
   createPatches: { value: createPatches },
   activeDshVersion: { value: activeDshVersion },
   LEGACY_RANGE: { value: LEGACY_RANGE },
-  DSH_012_RANGE: { value: DSH_012_RANGE },
+  DSH_MODERN_RANGE: { value: DSH_MODERN_RANGE },
 })
 
 module.exports = patches
