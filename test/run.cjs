@@ -1013,7 +1013,7 @@ test('settings: native card links its owner and persists ordered metric tags', (
   const owner = rendered.root.findByType('a')
   deepEqual(owner.children.join(''), '@ch4acko3/dsh-turn-fold')
   deepEqual(owner.parent.props.className, '__ch4acko3-dsh-turn-fold-settings__titleRow')
-  deepEqual(owner.props.href, 'https://github.com/CH4ACKO3/dsh-turn-fold')
+  deepEqual(owner.props.href, 'https://github.com/memorax-ai/dsh-turn-fold')
   deepEqual(owner.props.target, '_blank')
   deepEqual(owner.props.rel, 'noreferrer')
   deepEqual(rendered.root.findByProps({ 'data-test-settings-chevron': '' }).props.className, '__ch4acko3-dsh-turn-fold-settings__chevron')

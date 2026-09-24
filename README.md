@@ -51,7 +51,7 @@ uncertain target.
 ## Install
 
 ```sh
-dsh plugin --profile web add github:CH4ACKO3/dsh-turn-fold
+dsh plugin --profile web add github:memorax-ai/dsh-turn-fold
 dsh harmony status --profile web   # all three patches must be `bound`
 ```
 

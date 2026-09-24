@@ -623,7 +623,7 @@ function __ch4acko3DshTurnFoldSettingsCard() {
                   react_jsx_runtime.jsx("span", { className: "__ch4acko3-dsh-turn-fold-settings__title", children: title }),
                   react_jsx_runtime.jsx("a", {
                     className: "__ch4acko3-dsh-turn-fold-settings__pluginName",
-                    href: "https://github.com/CH4ACKO3/dsh-turn-fold",
+                    href: "https://github.com/memorax-ai/dsh-turn-fold",
                     target: "_blank",
                     rel: "noreferrer",
                     "data-ready": ownerLinkReady ? "true" : "false",

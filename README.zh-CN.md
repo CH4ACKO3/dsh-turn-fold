@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 ## 安装
 
 ```sh
-dsh plugin --profile web add github:CH4ACKO3/dsh-turn-fold
+dsh plugin --profile web add github:memorax-ai/dsh-turn-fold
 dsh harmony status --profile web   # 三个 Patch 都必须为 `bound`
 ```
 
