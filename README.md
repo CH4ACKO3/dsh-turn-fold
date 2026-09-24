@@ -78,7 +78,7 @@ Configure the npm trusted publisher once:
 
 ```sh
 npx npm@^11.15.0 trust github @ch4acko3/dsh-turn-fold \
-  --repo ch4acko3/dsh-turn-fold \
+  --repo memorax-ai/dsh-turn-fold \
   --file release.yml \
   --allow-publish
 ```
